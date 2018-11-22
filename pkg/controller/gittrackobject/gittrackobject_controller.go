@@ -30,7 +30,6 @@ import (
 	"github.com/pusher/faros/pkg/utils"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -66,12 +65,6 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 		close(stop)
 	}()
 
-	// Create a restMapper (used by informer to look up resource kinds)
-	restMapper, err := utils.NewRestMapper(mgr.GetConfig())
-	if err != nil {
-		panic(fmt.Errorf("unable to create rest mapper: %v", err))
-	}
-
 	return &ReconcileGitTrackObject{
 		Client:      mgr.GetClient(),
 		scheme:      mgr.GetScheme(),
@@ -80,7 +73,6 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 		informers:   make(map[string]toolscache.SharedIndexInformer),
 		config:      mgr.GetConfig(),
 		stop:        stop,
-		restMapper:  restMapper,
 		recorder:    mgr.GetRecorder("gittrackobject-controller"),
 	}
 }
@@ -166,7 +158,6 @@ type ReconcileGitTrackObject struct {
 	informers   map[string]toolscache.SharedIndexInformer
 	config      *rest.Config
 	stop        chan struct{}
-	restMapper  meta.RESTMapper
 	recorder    record.EventRecorder
 }
 
