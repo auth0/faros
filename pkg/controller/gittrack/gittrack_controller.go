@@ -258,6 +258,7 @@ func (r *ReconcileGitTrack) listObjectsByName(owner *farosv1alpha1.GitTrack) (ma
 		return nil, err
 	}
 	for _, gto := range gtos.Items {
+		// if isOwnedBy(&gto, owner) {
 		if metav1.IsControlledBy(&gto, owner) {
 			result[gto.GetNamespacedName()] = gto.DeepCopy()
 		}
@@ -276,6 +277,17 @@ func (r *ReconcileGitTrack) listObjectsByName(owner *farosv1alpha1.GitTrack) (ma
 
 	return result, nil
 }
+
+// func isOwnedBy(obj *farosv1alpha1.GitTrackObject, owner *farosv1alpha1.GitTrack) bool {
+// 	annotations := obj.GetAnnotations()
+// 	if annotations != nil {
+// 		compare := fmt.Sprintf("%s.%s.%s/%s", owner.Name, owner.Kind, owner.TypeMeta.GroupVersionKind().Group, owner.GroupVersionKind().Version)
+// 		if annotations["faros.pusher.com/owner-reference"] == compare {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
 // result represents the result of creating or updating a GitTrackObject
 type result struct {
@@ -340,6 +352,7 @@ func objectName(u *unstructured.Unstructured) string {
 // handleObject either creates or updates a GitTrackObject
 func (r *ReconcileGitTrack) handleObject(u *unstructured.Unstructured, owner *farosv1alpha1.GitTrack) result {
 	name := objectName(u)
+	// fmt.Println("handleObject for " + name)
 	gto, err := r.newGitTrackObjectInterface(name, u)
 	if err != nil {
 		namespacedName := strings.TrimLeft(fmt.Sprintf("%s/%s", u.GetNamespace(), name), "/")
@@ -361,6 +374,14 @@ func (r *ReconcileGitTrack) handleObject(u *unstructured.Unstructured, owner *fa
 	if err = controllerutil.SetControllerReference(owner, gto, r.scheme); err != nil {
 		return errorResult(gto.GetNamespacedName(), err)
 	}
+
+	// annotations := gto.GetAnnotations()
+	// if annotations == nil {
+	// 	annotations = make(map[string]string)
+	// }
+	// annotations["faros.pusher.com/owner-reference"] = fmt.Sprintf("%s.%s.%s/%s", owner.Name, owner.Kind, owner.TypeMeta.GroupVersionKind().Group, owner.GroupVersionKind().Version)
+	// gto.SetAnnotations(annotations)
+
 	found := gto.DeepCopyInterface()
 	err = r.Get(context.TODO(), types.NamespacedName{Name: gto.GetName(), Namespace: gto.GetNamespace()}, found)
 	if err != nil && errors.IsNotFound(err) {
@@ -412,6 +433,7 @@ func (r *ReconcileGitTrack) createChild(name string, timeToDeploy time.Duration,
 // UpdateChild compares the two GitTrackObjects and updates the foundGTO if the
 // childGTO
 func (r *ReconcileGitTrack) updateChild(foundGTO, childGTO farosv1alpha1.GitTrackObjectInterface) (bool, error) {
+	// fmt.Println("Updating child " + childGTO.GetName())
 	originalResourceVersion := foundGTO.GetResourceVersion()
 	err := r.applier.Apply(context.TODO(), &farosclient.ApplyOptions{}, childGTO)
 	if err != nil {
@@ -420,6 +442,7 @@ func (r *ReconcileGitTrack) updateChild(foundGTO, childGTO farosv1alpha1.GitTrac
 
 	// Not updated if the resource version hasn't changed
 	if originalResourceVersion == childGTO.GetResourceVersion() {
+		// fmt.Println("Resource version hasn't changed: " + originalResourceVersion + " - " + childGTO.GetResourceVersion())
 		return false, nil
 	}
 

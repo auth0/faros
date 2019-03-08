@@ -58,6 +58,8 @@ func (r *ReconcileGitTrackObject) handleGitTrackObject(gto farosv1alpha1.GitTrac
 		}
 	}
 
+	// fmt.Println("handleGitTrackObject for child " + child.GetName() + " " + child.GetKind())
+
 	// Make sure to watch the child resource (does nothing if the resource is
 	// already being watched)
 	err = r.watch(*child)
@@ -152,6 +154,8 @@ func (r *ReconcileGitTrackObject) handleUpdate(gto farosv1alpha1.GitTrackObjectI
 		return gittrackobjectutils.ErrorUpdatingChild, fmt.Errorf("unable to get update strategy: %v", err)
 	}
 
+	// fmt.Println("Handle update for " + child.GetName() + " with strategy " + string(updateStrategy))
+
 	switch updateStrategy {
 	case gittrackobjectutils.RecreateUpdateStrategy:
 		return r.handleRecreateUpdateStrategy(gto, found, child)
@@ -167,14 +171,17 @@ func (r *ReconcileGitTrackObject) handleUpdate(gto farosv1alpha1.GitTrackObjectI
 func (r *ReconcileGitTrackObject) handleDefaultUpdateStrategy(gto farosv1alpha1.GitTrackObjectInterface, found, child *unstructured.Unstructured) (gittrackobjectutils.ConditionReason, error) {
 	childUpdated, err := r.updateChild(found, child)
 	if err != nil {
+		// fmt.Println("update failed for " + child.GetName() + ": " + err.Error())
 		r.sendEvent(gto, corev1.EventTypeWarning, "UpdateFailed", "Unable to update child %s %s/%s", child.GetKind(), child.GetNamespace(), child.GetName())
 		return gittrackobjectutils.ErrorUpdatingChild, fmt.Errorf("unable to update child: %v", err)
 	}
 	if !childUpdated {
+		// fmt.Println("Child not updated for " + child.GetName())
 		return "", nil
 	}
 
 	// Update was successful
+	// fmt.Println("Update successfull for " + child.GetName())
 	r.sendEvent(gto, corev1.EventTypeNormal, "UpdateSuccessful", "Successfully updated child %s %s/%s", child.GetKind(), child.GetNamespace(), child.GetName())
 	return "", nil
 }
@@ -219,6 +226,7 @@ func (r *ReconcileGitTrackObject) recreateChild(found, child *unstructured.Unstr
 // updateChild updates the given child resource of a (Cluster)GitTrackObject
 func (r *ReconcileGitTrackObject) updateChild(found, child *unstructured.Unstructured) (bool, error) {
 	return r.applyChildWithDryRun(found, child, false)
+	// return r.applyChild(found, child, true)
 }
 
 // applyChildWithDryRun first applies the child with DryRun and then updates the resource if there is change to persist
@@ -226,14 +234,17 @@ func (r *ReconcileGitTrackObject) applyChildWithDryRun(found, child *unstructure
 	dryRunTrue := true
 	err := r.applier.Apply(context.TODO(), &farosclient.ApplyOptions{ForceDeletion: &force, ServerDryRun: &dryRunTrue}, child)
 	if err != nil {
+		// fmt.Printf("unable to update child resource: %s %v\n", child.GetName(), err)
 		return false, fmt.Errorf("unable to update child resource: %v", err)
 	}
 
 	// Not updated if the child now equals the server version
 	if reflect.DeepEqual(child, found) {
+		// fmt.Println("Still the same")
 		return false, nil
 	}
 
+	// fmt.Println("update with dryrun for " + child.GetName())
 	// The DryRun showed a change is required so now update without DryRun
 	err = r.applier.Apply(context.TODO(), &farosclient.ApplyOptions{ForceDeletion: &force}, child)
 	if err != nil {
@@ -249,6 +260,8 @@ func (r *ReconcileGitTrackObject) applyChild(found, child *unstructured.Unstruct
 	if err != nil {
 		return false, fmt.Errorf("unable to update child resource: %v", err)
 	}
+
+	// fmt.Println("applyChild for " + child.GetName())
 
 	// Not updated if the resource version hasn't changed
 	if originalResourceVersion == child.GetResourceVersion() {

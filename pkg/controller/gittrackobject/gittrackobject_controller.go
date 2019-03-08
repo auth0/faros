@@ -200,6 +200,10 @@ func (r *ReconcileGitTrackObject) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
+	// fmt.Println()
+	// fmt.Println("----------------")
+	// fmt.Println("Reconcile for " + instance.GetName())
+
 	// Create new opts structs for updating status and metrics
 	result := r.handleGitTrackObject(instance)
 	r.updateStatus(instance, &statusOpts{inSyncError: result.inSyncError, inSyncReason: result.inSyncReason})
