@@ -49,6 +49,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+const ownerReferenceAnnotation = "faros.pusher.com/owner-reference"
+const ownerReferenceAnnotationFormat = "%s.%s.%s/%s"
+
 // Add creates a new GitTrack Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 // USER ACTION REQUIRED: update cmd/manager/main.go to call this faros.Add(mgr) to install this Controller
@@ -258,9 +261,14 @@ func (r *ReconcileGitTrack) listObjectsByName(owner *farosv1alpha1.GitTrack) (ma
 		return nil, err
 	}
 	for _, gto := range gtos.Items {
-		// if isOwnedBy(&gto, owner) {
-		if metav1.IsControlledBy(&gto, owner) {
-			result[gto.GetNamespacedName()] = gto.DeepCopy()
+		if farosflags.CreateOwnerReference {
+			if metav1.IsControlledBy(&gto, owner) {
+				result[gto.GetNamespacedName()] = gto.DeepCopy()
+			}
+		} else {
+			if isOwnedBy(&gto, owner) {
+				result[gto.GetNamespacedName()] = gto.DeepCopy()
+			}
 		}
 	}
 
@@ -278,16 +286,17 @@ func (r *ReconcileGitTrack) listObjectsByName(owner *farosv1alpha1.GitTrack) (ma
 	return result, nil
 }
 
-// func isOwnedBy(obj *farosv1alpha1.GitTrackObject, owner *farosv1alpha1.GitTrack) bool {
-// 	annotations := obj.GetAnnotations()
-// 	if annotations != nil {
-// 		compare := fmt.Sprintf("%s.%s.%s/%s", owner.Name, owner.Kind, owner.TypeMeta.GroupVersionKind().Group, owner.GroupVersionKind().Version)
-// 		if annotations["faros.pusher.com/owner-reference"] == compare {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
+// isOwnedBy checks if the GitTrackObject is owned by owner by checking its annotations
+func isOwnedBy(obj *farosv1alpha1.GitTrackObject, owner *farosv1alpha1.GitTrack) bool {
+	annotations := obj.GetAnnotations()
+	if annotations != nil {
+		compare := fmt.Sprintf(ownerReferenceAnnotationFormat, owner.Name, owner.Kind, owner.TypeMeta.GroupVersionKind().Group, owner.GroupVersionKind().Version)
+		if annotations[ownerReferenceAnnotation] == compare {
+			return true
+		}
+	}
+	return false
+}
 
 // result represents the result of creating or updating a GitTrackObject
 type result struct {
@@ -371,16 +380,20 @@ func (r *ReconcileGitTrack) handleObject(u *unstructured.Unstructured, owner *fa
 	timeToDeploy := time.Now().Sub(r.lastUpdateTimes[owner.Spec.Repository])
 	r.mutex.RUnlock()
 
-	if err = controllerutil.SetControllerReference(owner, gto, r.scheme); err != nil {
-		return errorResult(gto.GetNamespacedName(), err)
+	if farosflags.CreateOwnerReference {
+		fmt.Println("Creating owner reference")
+		if err = controllerutil.SetControllerReference(owner, gto, r.scheme); err != nil {
+			return errorResult(gto.GetNamespacedName(), err)
+		}
+	} else {
+		fmt.Println("Creating owner annotation")
+		annotations := gto.GetAnnotations()
+		if annotations == nil {
+			annotations = make(map[string]string)
+		}
+		annotations[ownerReferenceAnnotation] = fmt.Sprintf(ownerReferenceAnnotationFormat, owner.Name, owner.Kind, owner.TypeMeta.GroupVersionKind().Group, owner.GroupVersionKind().Version)
+		gto.SetAnnotations(annotations)
 	}
-
-	// annotations := gto.GetAnnotations()
-	// if annotations == nil {
-	// 	annotations = make(map[string]string)
-	// }
-	// annotations["faros.pusher.com/owner-reference"] = fmt.Sprintf("%s.%s.%s/%s", owner.Name, owner.Kind, owner.TypeMeta.GroupVersionKind().Group, owner.GroupVersionKind().Version)
-	// gto.SetAnnotations(annotations)
 
 	found := gto.DeepCopyInterface()
 	err = r.Get(context.TODO(), types.NamespacedName{Name: gto.GetName(), Namespace: gto.GetNamespace()}, found)

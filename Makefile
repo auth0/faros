@@ -14,7 +14,7 @@ manager: generate fmt vet
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
-	go run ./cmd/manager/main.go --sync-period 30s
+	go run ./cmd/manager/main.go --sync-period=60s --create-owner-reference=true --ignore-resource=jobs.batch/v1
 
 # Install CRDs into a cluster
 install: manifests

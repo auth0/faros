@@ -31,6 +31,9 @@ var (
 	// Namespace is the namespace for the controller to be restricted to
 	Namespace string
 
+	// CreateOwnerReference links GitTrack and GitTrackObjects for easier cleanup, defaults to true
+	CreateOwnerReference bool
+
 	// ignoredResources is a list of Kubernets kinds to ignore when reconciling
 	ignoredResources []string
 )
@@ -38,6 +41,7 @@ var (
 func init() {
 	FlagSet = flag.NewFlagSet("faros", flag.PanicOnError)
 	FlagSet.StringVar(&Namespace, "namespace", "", "Only manage GitTrack resources in given namespace")
+	FlagSet.BoolVar(&CreateOwnerReference, "create-owner-reference", true, "Link child resources to GitTrack resource for easier cleanup")
 	FlagSet.StringSliceVar(&ignoredResources, "ignore-resource", []string{}, "Ignore resources of these kinds found in repositories, specified in <resource>.<group>/<version> format eg jobs.batch/v1")
 }
 
