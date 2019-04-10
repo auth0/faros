@@ -45,7 +45,7 @@ var (
 
 func main() {
 	// Setup flags
-	// goflag.Lookup("logtostderr").Value.Set("true")
+	goflag.Lookup("logtostderr").Value.Set("true")
 	flag.CommandLine.AddFlagSet(farosflags.FlagSet)
 	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	flag.Parse()
