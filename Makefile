@@ -53,18 +53,17 @@ vet:
 lint:
 	@ echo "\033[36mLinting code\033[0m"
 	$(LINTER) run --disable-all \
-          --enable=vet \
-          --enable=vetshadow \
-          --enable=golint \
-          --enable=ineffassign \
-          --enable=goconst \
-          --enable=deadcode \
-          --enable=gofmt \
-          --enable=goimports \
-          --skip-dirs=pkg/client/ \
-          --deadline=120s \
-          --verbose \
-          --tests ./...
+                --exclude-use-default=false \
+                --enable=govet \
+                --enable=ineffassign \
+                --enable=deadcode \
+                --enable=golint \
+                --enable=goconst \
+                --enable=gofmt \
+                --enable=goimports \
+                --skip-dirs=pkg/client/ \
+                --deadline=120s \
+                --tests ./...
 	@ echo
 
 # Run tests
@@ -112,7 +111,7 @@ release: test docker-build docker-tag docker-push
 # Run against the configured Kubernetes cluster in ~/.kube/config
 .PHONY: run
 run: generate fmt vet
-	$(GO) run ./cmd/manager/main.go
+	$(GO) run ./cmd/manager
 
 # Install CRDs into a cluster
 .PHONY: install
