@@ -502,6 +502,8 @@ func (r *ReconcileGitTrack) Reconcile(request reconcile.Request) (reconcile.Resu
 	sOpts := newStatusOpts()
 	mOpts := newMetricOpts(sOpts)
 
+	log.Printf("Reconcile called.")
+
 	// Update the GitTrack status when we leave this function
 	defer func() {
 		err := r.updateStatus(instance, sOpts)
@@ -603,5 +605,6 @@ func (r *ReconcileGitTrack) Reconcile(request reconcile.Request) (reconcile.Resu
 	sOpts.gcReason = gittrackutils.GCSuccess
 
 	log.Printf("Reconcile took %s\n", time.Since(start))
+	fmt.Printf("Reconcile took %s\n", time.Since(start))
 	return reconcile.Result{}, nil
 }
