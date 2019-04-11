@@ -148,7 +148,7 @@ func (r *ReconcileGitTrack) checkoutRepo(url string, ref string, gitCreds *gitCr
 		return &gitstore.Repo{}, fmt.Errorf("failed to get repository '%s': %v'", url, err)
 	}
 
-	log.Printf("Checking out '%s'\n", ref)
+	log.Printf("Checking out to branch '%s'\n", ref)
 	err = repo.Checkout(ref)
 	if err != nil {
 		return &gitstore.Repo{}, fmt.Errorf("failed to checkout '%s': %v", ref, err)
@@ -502,8 +502,6 @@ func (r *ReconcileGitTrack) Reconcile(request reconcile.Request) (reconcile.Resu
 	sOpts := newStatusOpts()
 	mOpts := newMetricOpts(sOpts)
 
-	log.Printf("Reconcile called.")
-
 	// Update the GitTrack status when we leave this function
 	defer func() {
 		err := r.updateStatus(instance, sOpts)
@@ -605,6 +603,5 @@ func (r *ReconcileGitTrack) Reconcile(request reconcile.Request) (reconcile.Resu
 	sOpts.gcReason = gittrackutils.GCSuccess
 
 	log.Printf("Reconcile took %s\n", time.Since(start))
-	fmt.Printf("Reconcile took %s\n", time.Since(start))
 	return reconcile.Result{}, nil
 }

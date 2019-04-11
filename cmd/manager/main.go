@@ -50,6 +50,8 @@ func main() {
 	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	flag.Parse()
 
+	log.Printf("Faros starting in version %s", VERSION)
+
 	// Handle version flag
 	if *showVersion {
 		fmt.Printf("faros-gittrack-controller %s (built with %s)\n", VERSION, runtime.Version())
