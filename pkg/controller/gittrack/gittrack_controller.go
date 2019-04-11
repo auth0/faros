@@ -29,7 +29,7 @@ import (
 	farosflags "github.com/pusher/faros/pkg/flags"
 	utils "github.com/pusher/faros/pkg/utils"
 	farosclient "github.com/pusher/faros/pkg/utils/client"
-	gitstore "github.com/pusher/git-store"
+	gitstore "github.com/slentzen-auth0/git-store"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -137,6 +137,7 @@ type ReconcileGitTrack struct {
 
 // checkoutRepo checks out the repository at reference and returns a pointer to said repository
 func (r *ReconcileGitTrack) checkoutRepo(url string, ref string, gitCreds *gitCredentials) (*gitstore.Repo, error) {
+	start := time.Now()
 	log.Printf("Getting repository '%s'\n", url)
 	repoRef, err := createRepoRefFromCreds(url, gitCreds)
 	if err != nil {
@@ -147,7 +148,7 @@ func (r *ReconcileGitTrack) checkoutRepo(url string, ref string, gitCreds *gitCr
 		return &gitstore.Repo{}, fmt.Errorf("failed to get repository '%s': %v'", url, err)
 	}
 
-	log.Printf("Checking out '%s'\n", ref)
+	log.Printf("Checking out to branch '%s'\n", ref)
 	err = repo.Checkout(ref)
 	if err != nil {
 		return &gitstore.Repo{}, fmt.Errorf("failed to checkout '%s': %v", ref, err)
@@ -161,6 +162,7 @@ func (r *ReconcileGitTrack) checkoutRepo(url string, ref string, gitCreds *gitCr
 	r.mutex.Lock()
 	r.lastUpdateTimes[url] = lastUpdated
 	r.mutex.Unlock()
+	log.Printf("checkoutRepo took %s\n", time.Since(start))
 
 	return repo, nil
 }
@@ -200,6 +202,7 @@ func (r *ReconcileGitTrack) fetchGitCredentials(namespace string, deployKey faro
 // getFiles checks out the Spec.Repository at Spec.Reference and returns a map of filename to
 // gitstore.File pointers
 func (r *ReconcileGitTrack) getFiles(gt *farosv1alpha1.GitTrack) (map[string]*gitstore.File, error) {
+	start := time.Now()
 	r.recorder.Eventf(gt, apiv1.EventTypeNormal, "CheckoutStarted", "Checking out '%s' at '%s'", gt.Spec.Repository, gt.Spec.Reference)
 	gitCreds, err := r.fetchGitCredentials(gt.Namespace, gt.Spec.DeployKey)
 	if err != nil {
@@ -219,7 +222,7 @@ func (r *ReconcileGitTrack) getFiles(gt *farosv1alpha1.GitTrack) (map[string]*gi
 	}
 
 	globbedSubPath := strings.TrimPrefix(subPath, "/") + "{**/*,*}.{yaml,yml,json}"
-	files, err := repo.GetAllFiles(globbedSubPath, true)
+	files, err := repo.GetAllFiles(globbedSubPath, true, true)
 	if err != nil {
 		r.recorder.Eventf(gt, apiv1.EventTypeWarning, "CheckoutFailed", "Failed to get files for SubPath '%s'", gt.Spec.SubPath)
 		return nil, fmt.Errorf("failed to get all files for subpath '%s': %v", gt.Spec.SubPath, err)
@@ -227,6 +230,7 @@ func (r *ReconcileGitTrack) getFiles(gt *farosv1alpha1.GitTrack) (map[string]*gi
 		r.recorder.Eventf(gt, apiv1.EventTypeWarning, "CheckoutFailed", "No files for SubPath '%s'", gt.Spec.SubPath)
 		return nil, fmt.Errorf("no files for subpath '%s'", gt.Spec.SubPath)
 	}
+	log.Printf("getFiles took %s\n", time.Since(start))
 
 	return files, nil
 }
@@ -493,6 +497,7 @@ func (r *ReconcileGitTrack) ignoreObject(u *unstructured.Unstructured) (bool, er
 // +kubebuilder:rbac:groups=faros.pusher.com,resources=gittrackobjects,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=faros.pusher.com,resources=clustergittrackobjects,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileGitTrack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	start := time.Now()
 	instance := &farosv1alpha1.GitTrack{}
 	sOpts := newStatusOpts()
 	mOpts := newMetricOpts(sOpts)
@@ -597,5 +602,6 @@ func (r *ReconcileGitTrack) Reconcile(request reconcile.Request) (reconcile.Resu
 	}
 	sOpts.gcReason = gittrackutils.GCSuccess
 
+	log.Printf("Reconcile took %s\n", time.Since(start))
 	return reconcile.Result{}, nil
 }
