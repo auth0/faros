@@ -676,14 +676,6 @@
   revision = "418d78d0b9a7b7de3a6bbc8a23def624cc977bb2"
 
 [[projects]]
-  digest = "1:dc16a6f5bdd6af17ace824614da4838c43765bfa7fe1602be9c57655cd2fe0db"
-  name = "github.com/pusher/git-store"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "3cb07ab547c04aee81bc79acd85de16af9709c62"
-  version = "v0.5.0"
-
-[[projects]]
   digest = "1:40e527269f1feb16b3069bfe80ff05a462d190eacfe07eb0a59fa25c381db7af"
   name = "github.com/russross/blackfriday"
   packages = ["."]
@@ -698,6 +690,14 @@
   pruneopts = "T"
   revision = "1744e2970ca51c86172c8190fadad617561ed6e7"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:3b22d8a0904ec766a1a1270bcae556f748e7f692202c59db05d4eca68132e664"
+  name = "github.com/slentzen-auth0/git-store"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "09947afd7cb6cd1f27c41c74e9da0391f86a640e"
+  version = "0.5.1"
 
 [[projects]]
   digest = "1:2b9e473441ec584565880b55467ba1797417f42a60d92af4a761f8485a57e4d0"
@@ -1642,7 +1642,7 @@
     "github.com/onsi/gomega/types",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_model/go",
-    "github.com/pusher/git-store",
+    "github.com/slentzen-auth0/git-store",
     "github.com/spf13/pflag",
     "golang.org/x/net/context",
     "gopkg.in/yaml.v2",
