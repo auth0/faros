@@ -25,6 +25,22 @@ pipeline {
       }
     }
 
+    stage('Unit Test') {
+      steps {
+        script {
+          try {
+            echo "Unit Testing `${env.SERVICE_NAME}`"
+            sh 'make test'
+            githubNotify context: 'jenkinsfile/auth0/acceptance-test', description: 'Tests passed', status: 'SUCCESS'
+          } catch (error) {
+            githubNotify context: 'jenkinsfile/auth0/acceptance-test', description: 'Tests failed', status: 'FAILURE'
+            throw error
+          }
+        }
+        // Find more examples of what to add here at https://github.com/auth0/auth0-users/blob/master/Jenkinsfile#L70
+      }
+    }
+
     stage('Build Docker Image') {
       steps {
         script {
