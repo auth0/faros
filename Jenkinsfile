@@ -8,7 +8,7 @@ pipeline {
   }
 
   options {
-    timeout(time: 10, unit: 'MINUTES') // Global timeout for the job. Recommended to make the job fail if it's taking too long
+    timeout(time: 20, unit: 'MINUTES') // Global timeout for the job. Recommended to make the job fail if it's taking too long
   }
 
   parameters { // Job parameters that need to be supplied when the job is run. If they have a default value they won't be required
