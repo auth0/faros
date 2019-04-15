@@ -30,7 +30,7 @@ pipeline {
         script {
           try {
             echo "Unit Testing `${env.SERVICE_NAME}`"
-            sh 'make test'
+            sh 'make docker-test'
             githubNotify context: 'jenkinsfile/auth0/acceptance-test', description: 'Tests passed', status: 'SUCCESS'
           } catch (error) {
             githubNotify context: 'jenkinsfile/auth0/acceptance-test', description: 'Tests failed', status: 'FAILURE'

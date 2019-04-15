@@ -85,6 +85,14 @@ test: vendor generate manifests
 	$(GINKGO) -v -race -randomizeAllSpecs ./pkg/... ./cmd/... -- -report-dir=$$ARTIFACTS
 	@ echo
 
+docker-test:
+	docker run \
+		--rm \
+		-v "$$(pwd):/go/src/github.com/pusher/faros" \
+		-w /go/src/github.com/pusher/faros \
+		--entrypoint "./build/run_test.sh" \
+		golang:1.12
+
 # Build manager binary
 $(BINARY): generate fmt vet
 	CGO_ENABLED=0 $(GO) build -o $(BINARY) -ldflags="-X main.VERSION=${VERSION}" github.com/pusher/faros/cmd/manager
