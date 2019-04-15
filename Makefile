@@ -85,6 +85,7 @@ test: vendor generate manifests
 	$(GINKGO) -v -race -randomizeAllSpecs ./pkg/... ./cmd/... -- -report-dir=$$ARTIFACTS
 	@ echo
 
+.PHONY: docker-test
 docker-test:
 	docker run \
 		--rm \

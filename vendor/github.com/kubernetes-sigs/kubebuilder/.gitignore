@@ -1,0 +1,6 @@
+.idea/
+*.swp
+*.swo
+*~
+/main
+cover.out

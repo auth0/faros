@@ -8,7 +8,7 @@ pipeline {
   }
 
   options {
-    timeout(time: 20, unit: 'MINUTES') // Global timeout for the job. Recommended to make the job fail if it's taking too long
+    timeout(time: 40, unit: 'MINUTES') // Global timeout for the job. Recommended to make the job fail if it's taking too long
   }
 
   parameters { // Job parameters that need to be supplied when the job is run. If they have a default value they won't be required
@@ -48,19 +48,15 @@ pipeline {
           DOCKER_REGISTRY = getDockerRegistry()
           DOCKER_TAG = getDockerTag()
           DOCKER_IMAGE_NAME = "${DOCKER_REGISTRY}/${env.SERVICE_NAME}:${DOCKER_TAG}"
-          DOCKER_IMAGE_LATEST = "${DOCKER_REGISTRY}/${env.SERVICE_NAME}:latest"
           currentBuild.description = "${DOCKER_TAG}"
 
           withDockerRegistry(getArtifactoryRegistry()) {
-            withCredentials([[$class: 'StringBinding', credentialsId: 'auth0extensions-token', variable: 'GITHUB_TOKEN']]) {
-              sh """
-                docker build \
-                  --tag ${DOCKER_IMAGE_NAME} \
-                  --build-arg GITHUB_TOKEN=${GITHUB_TOKEN} \
-                  --build-arg VERSION=${DOCKER_TAG} \
-                  .
-              """
-            }
+            sh """
+              docker build \
+                --tag ${DOCKER_IMAGE_NAME} \
+                --build-arg VERSION=${DOCKER_TAG} \
+                .
+            """
           }
         }
       }
@@ -78,6 +74,8 @@ pipeline {
       }
       steps {
         script {
+          DOCKER_IMAGE_LATEST = "${DOCKER_REGISTRY}/${env.SERVICE_NAME}:latest"
+
           withDockerRegistry(getArtifactoryRegistry()) {
             sh """
               docker tag ${DOCKER_IMAGE_NAME} ${DOCKER_IMAGE_LATEST}
@@ -109,7 +107,12 @@ pipeline {
       // Recommended to clean the workspace after every run
       deleteDir()
       dockerRemoveImage(DOCKER_IMAGE_NAME)
-      dockerRemoveImage(DOCKER_IMAGE_LATEST)
+
+      script {
+        if (env.DOCKER_IMAGE_LATEST) {
+          dockerRemoveImage(DOCKER_IMAGE_LATEST)
+        }
+      }
     }
   }
 }
