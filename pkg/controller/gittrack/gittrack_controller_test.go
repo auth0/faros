@@ -919,7 +919,7 @@ var _ = Describe("GitTrack Suite", func() {
 		var expectedKey []byte
 
 		keysMustBeSetErr := errors.New("if using a deploy key, both SecretName and Key must be set")
-		secretNotFoundErr := errors.New("failed to look up secret nonExistSecret: Secret \"nonExistSecret\" not found")
+		secretNotFoundErr := errors.New("failed to look up secret nonExistSecret: secrets \"nonExistSecret\" not found")
 
 		BeforeEach(func() {
 			var ok bool
