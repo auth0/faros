@@ -38,7 +38,9 @@ func NewRestMapper(config *rest.Config) (meta.RESTMapper, error) {
 		return nil, fmt.Errorf("unable to fetch API Group Resources: %v", err)
 	}
 
-	return restmapper.NewDiscoveryRESTMapper(apiGroupResources), nil
+	return meta.NewLazyRESTMapperLoader(func() (meta.RESTMapper, error) {
+		return client
+	}), nil
 }
 
 // GetAPIResource uses a rest mapper to get the GroupVersionResource and
