@@ -1,4 +1,5 @@
 release/
+vendor/
 .env
 cover.out
 faros-gittrack-controller

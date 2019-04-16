@@ -89,6 +89,7 @@ test: vendor generate manifests
 docker-test:
 	docker run \
 		--rm \
+		-u $$(id -u) \
 		-v "$$(pwd):/go/src/github.com/pusher/faros" \
 		-w /go/src/github.com/pusher/faros \
 		--entrypoint "./build/run_test.sh" \
