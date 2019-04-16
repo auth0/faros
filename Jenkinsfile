@@ -70,7 +70,7 @@ pipeline {
 
     stage('Update "latest" Tag') {
       when {
-        branch 'master'
+        branch 'auth0-master'
       }
       steps {
         script {
@@ -109,6 +109,9 @@ pipeline {
       dockerRemoveImage(DOCKER_IMAGE_NAME)
 
       script {
+        if (env.DOCKER_IMAGE_NAME) {
+          dockerRemoveImage(DOCKER_IMAGE_NAME)
+        }
         if (env.DOCKER_IMAGE_LATEST) {
           dockerRemoveImage(DOCKER_IMAGE_LATEST)
         }
