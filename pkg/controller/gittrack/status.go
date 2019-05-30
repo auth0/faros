@@ -19,7 +19,6 @@ package gittrack
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 
 	farosv1alpha1 "github.com/pusher/faros/pkg/apis/faros/v1alpha1"
@@ -40,6 +39,7 @@ type statusOpts struct {
 	gcReason       gittrackutils.ConditionReason
 	upToDateError  error
 	upToDateReason gittrackutils.ConditionReason
+	ignoredFiles   map[string]string
 }
 
 func newStatusOpts() *statusOpts {
@@ -62,6 +62,7 @@ func updateGitTrackStatus(gt *farosv1alpha1.GitTrack, opts *statusOpts) (updated
 	status.ObjectsDiscovered = opts.discovered
 	status.ObjectsIgnored = opts.ignored
 	status.ObjectsInSync = opts.inSync
+	status.IgnoredFiles = opts.ignoredFiles
 	setCondition(&status, farosv1alpha1.FilesParsedType, opts.parseError, opts.parseReason)
 	setCondition(&status, farosv1alpha1.FilesFetchedType, opts.gitError, opts.gitReason)
 	setCondition(&status, farosv1alpha1.ChildrenGarbageCollectedType, opts.gcError, opts.gcReason)
@@ -106,11 +107,11 @@ func (r *ReconcileGitTrack) updateStatus(original *farosv1alpha1.GitTrack, opts 
 
 	// If the status was modified, update the GitTrack on the API
 	if gtUpdated {
-		log.Printf("Updating GitTrack %s status", gt.Name)
 		err := r.Update(context.TODO(), gt)
 		if err != nil {
 			return fmt.Errorf("unable to update GitTrack: %v", err)
 		}
+		r.log.V(1).Info("Status updated")
 	}
 	return nil
 }
