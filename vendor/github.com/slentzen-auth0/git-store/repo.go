@@ -214,7 +214,7 @@ func (r *Repo) getFileLog(path string) (GitLog, error) {
 
 // GetAllFiles returns a map of Files.
 // Each file is keyed in the map by it's path within the repository
-func (r *Repo) GetAllFiles(subPath string, ignoreSymlinks bool) (map[string]*File, error) {
+func (r *Repo) GetAllFiles(subPath string, ignoreSymlinks bool, ignoreLogs bool) (map[string]*File, error) {
 	rawFiles, err := r.getAllFiles()
 	if err != nil {
 		return nil, fmt.Errorf("unable to read files from repository: %v", err)
@@ -240,10 +240,15 @@ func (r *Repo) GetAllFiles(subPath string, ignoreSymlinks bool) (map[string]*Fil
 			continue
 		}
 
-		fileLog, err := r.getFileLog(path)
-		if err != nil {
-			return nil, fmt.Errorf("unable to get log for %s: %v", path, err)
+		// If ignoring logs, skip git blame which can incur long run times
+		var fileLog GitLog
+		if !ignoreLogs {
+			fileLog, err = r.getFileLog(path)
+			if err != nil {
+				return nil, fmt.Errorf("unable to get log for %s: %v", path, err)
+			}
 		}
+
 		files[path] = &File{
 			file: file,
 			Log:  fileLog,
@@ -311,3 +316,4 @@ func (f *File) Contents() string {
 	}
 	return content
 }
+
