@@ -62,7 +62,7 @@ func main() {
 	flag.CommandLine.AddGoFlagSet(logFlags)
 	flag.Parse()
 
-	log.Printf("Faros starting in version %s", VERSION)
+	fmt.Printf("Faros starting in version %s", VERSION)
 
 	// Handle version flag
 	if *showVersion {
