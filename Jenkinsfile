@@ -106,7 +106,6 @@ pipeline {
     cleanup {
       // Recommended to clean the workspace after every run
       deleteDir()
-      dockerRemoveImage(DOCKER_IMAGE_NAME)
 
       script {
         if (env.DOCKER_IMAGE_NAME) {
