@@ -205,6 +205,11 @@ func (a *Applier) create(ctx context.Context, opts *ApplyOptions, obj runtime.Ob
 	)
 	log.V(2).Info("creating resource", "dry-run", *opts.ServerDryRun)
 
+	err = createFinalizer(obj)
+	if err != nil {
+		return fmt.Errorf("unable to add finalizer to object: %v", err)
+	}
+
 	err = createApplyAnnotation(obj, unstructured.UnstructuredJSONScheme)
 	if err != nil {
 		return fmt.Errorf("unable to apply LastAppliedAnnotation to object: %v", err)

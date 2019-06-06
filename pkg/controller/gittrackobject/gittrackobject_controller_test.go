@@ -179,6 +179,11 @@ var _ = Describe("GitTrackObject Suite", func() {
 						Should(testutils.WithAnnotations(HaveKey(farosclient.LastAppliedAnnotation)))
 				})
 
+				It("should add a finalizer to the child", func() {
+					m.Eventually(child, timeout).
+						Should(testutils.WithFinalizers(HaveKey(farosclient.ResourceFinalizer)))
+				})
+
 				Context("when the child has the update strategy", func() {
 					var originalVersion string
 					var originalUID types.UID
@@ -551,6 +556,11 @@ var _ = Describe("GitTrackObject Suite", func() {
 				It("should add a last applied annotation to the child", func() {
 					m.Eventually(child, timeout).
 						Should(testutils.WithAnnotations(HaveKey(farosclient.LastAppliedAnnotation)))
+				})
+
+				It("should add a finalizer to the child", func() {
+					m.Eventually(child, timeout).
+						Should(testutils.WithFinalizers(HaveKey(farosclient.ResourceFinalizer)))
 				})
 
 				Context("when the child has the update strategy", func() {
