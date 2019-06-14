@@ -28,7 +28,9 @@ import (
 	farosclient "github.com/pusher/faros/pkg/utils/client"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -40,6 +42,12 @@ type handlerResult struct {
 	inSyncError  error
 	inSyncReason gittrackobjectutils.ConditionReason
 }
+
+// DeletionRequestedAnnotation is the key of the annotation that makes a GTO as requested for deletion.
+const DeletionRequestedAnnotation = "faros.pusher.com/deletion-requested"
+
+// ResourceFinalizer is the name of the Faros finalizer that protects resources from accidental GC deletion.
+const ResourceFinalizer = "faros.pusher.com/deletion-protection"
 
 // handleGitTrackObject handles the management of the child of the GitTrackObjectInterface
 // and returns a handlerResult which contains information for updating the
@@ -97,6 +105,24 @@ func (r *ReconcileGitTrackObject) handleGitTrackObject(gto farosv1alpha1.GitTrac
 		return handlerResult{
 			inSyncReason: gittrackobjectutils.ErrorGettingChild,
 			inSyncError:  fmt.Errorf("unable to get child %s %s: %v", gto.GetSpec().Kind, gto.GetSpec().Name, err),
+		}
+	}
+
+	// If marked for deletion, remove Finalizer on child and delete GTO.
+	if gto.GetAnnotations()[DeletionRequestedAnnotation] == "true" {
+		finalizers := found.GetFinalizers()
+		for _, finalizer := range finalizers {
+			if finalizer != ResourceFinalizer {
+				finalizers = append(finalizers, finalizer)
+			}
+		}
+		found.SetFinalizers(finalizers)
+		r.Delete(context.TODO(), gto)
+	} else {
+		finalizers := child.GetFinalizers()
+		if !contains(finalizers, ResourceFinalizer) {
+			finalizers = append(finalizers, ResourceFinalizer)
+			child.SetFinalizers(finalizers)
 		}
 	}
 
@@ -282,4 +308,32 @@ func (r *ReconcileGitTrackObject) sendEvent(gto farosv1alpha1.GitTrackObjectInte
 	}
 
 	r.recorder.Eventf(instance, eventType, reason, messageFmt, args...)
+}
+
+// setDeletionRequestedAnnotation sets the annotation that a deletion of the
+// resource has been requested.
+func setDeletionRequestedAnnotation(obj runtime.Object) error {
+	var metadataAccessor = meta.NewAccessor()
+
+	annots, err := metadataAccessor.Annotations(obj)
+	if err != nil {
+		return err
+	}
+
+	if annots == nil {
+		annots = map[string]string{}
+	}
+
+	annots[DeletionRequestedAnnotation] = "true"
+	return metadataAccessor.SetAnnotations(obj, annots)
+}
+
+// contains check if the specified string array contains a string.
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }

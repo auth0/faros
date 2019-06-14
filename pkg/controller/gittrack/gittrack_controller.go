@@ -444,10 +444,11 @@ func (r *ReconcileGitTrack) deleteResources(leftovers map[string]farosv1alpha1.G
 		r.log.V(0).Info("Found leftover resources to clean up", "leftover resources", string(len(leftovers)))
 	}
 	for name, obj := range leftovers {
-		if err := r.Delete(context.TODO(), obj); err != nil {
-			return fmt.Errorf("failed to delete child for '%s': '%s'", name, err)
+		farosclient.SetDeletionRequestedAnnotation(obj)
+		if err := r.Update(context.TODO(), obj); err != nil {
+			return fmt.Errorf("failed to mark child for deletion for '%s': '%s'", name, err)
 		}
-		r.log.V(0).Info("Child deleted", "child name", name)
+		r.log.V(0).Info("Child marked for deletion", "child name", name)
 	}
 	return nil
 }

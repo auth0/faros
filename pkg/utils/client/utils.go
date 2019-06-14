@@ -50,9 +50,6 @@ var metadataAccessor = meta.NewAccessor()
 // applied config
 const LastAppliedAnnotation = "faros.pusher.com/last-applied-configuration"
 
-// ResourceFinalizer is the name of the Faros finalizer
-const ResourceFinalizer = "faros.pusher.com/finalizer"
-
 func getNamespacedName(obj runtime.Object) (types.NamespacedName, error) {
 	name, err := metadataAccessor.Name(obj)
 	if err != nil {
@@ -63,34 +60,6 @@ func getNamespacedName(obj runtime.Object) (types.NamespacedName, error) {
 		return types.NamespacedName{}, err
 	}
 	return types.NamespacedName{Namespace: namespace, Name: name}, nil
-}
-
-// createFinalizer appends the Faros finalizer to the created resource.
-func createFinalizer(obj runtime.Object) error {
-	objAccessor, err := meta.Accessor(obj)
-	if err != nil {
-		return err
-	}
-	finalizers := objAccessor.GetFinalizers()
-	finalizers = append(finalizers, ResourceFinalizer)
-	objAccessor.SetFinalizers(finalizers)
-	return nil
-}
-
-// removeFinalizer removes the Faros finalizer to the created resource, if it exists.
-func removeFinalizer(obj runtime.Object) error {
-	objAccessor, err := meta.Accessor(obj)
-	if err != nil {
-		return err
-	}
-	finalizers := objAccessor.GetFinalizers()
-	for _, finalizer := range finalizers {
-		if finalizer != ResourceFinalizer {
-			finalizers = append(finalizers, ResourceFinalizer)
-		}
-	}
-	objAccessor.SetFinalizers(finalizers)
-	return nil
 }
 
 // createApplyAnnotation gets the modified configuration of the object,
