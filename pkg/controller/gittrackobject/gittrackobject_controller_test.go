@@ -347,6 +347,9 @@ var _ = Describe("GitTrackObject Suite", func() {
 
 					BeforeEach(func() {
 						originalUID = child.GetUID()
+						child.SetFinalizers([]string{})
+						m.Update(child).Should(Succeed())
+						Eventually(requests, timeout).Should(Receive(Equal(expectedRequest)))
 						m.Delete(child).Should(Succeed())
 						Eventually(requests, timeout).Should(Receive(Equal(expectedRequest)))
 					})
@@ -646,6 +649,7 @@ var _ = Describe("GitTrackObject Suite", func() {
 								annotations := map[string]string{"faros.pusher.com/update-strategy": string(gittrackobjectutils.RecreateUpdateStrategy)}
 								specData.SetAnnotations(annotations)
 								Expect(testutils.SetGitTrackObjectInterfaceSpec(gto, specData)).To(Succeed())
+								child.SetFinalizers([]string{})
 								m.Update(gto, timeout).Should(Succeed())
 
 								// Keep a copy of the child, otherwise we'll run into data race issues
@@ -726,6 +730,9 @@ var _ = Describe("GitTrackObject Suite", func() {
 
 					BeforeEach(func() {
 						originalUID = child.GetUID()
+						child.SetFinalizers([]string{})
+						m.Update(child).Should(Succeed())
+						Eventually(requests, timeout).Should(Receive(Equal(expectedClusterRequest)))
 						m.Delete(child).Should(Succeed())
 						Eventually(requests, timeout).Should(Receive(Equal(expectedClusterRequest)))
 					})
