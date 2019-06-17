@@ -28,9 +28,7 @@ import (
 	farosclient "github.com/pusher/faros/pkg/utils/client"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -308,24 +306,6 @@ func (r *ReconcileGitTrackObject) sendEvent(gto farosv1alpha1.GitTrackObjectInte
 	}
 
 	r.recorder.Eventf(instance, eventType, reason, messageFmt, args...)
-}
-
-// setDeletionRequestedAnnotation sets the annotation that a deletion of the
-// resource has been requested.
-func setDeletionRequestedAnnotation(obj runtime.Object) error {
-	var metadataAccessor = meta.NewAccessor()
-
-	annots, err := metadataAccessor.Annotations(obj)
-	if err != nil {
-		return err
-	}
-
-	if annots == nil {
-		annots = map[string]string{}
-	}
-
-	annots[DeletionRequestedAnnotation] = "true"
-	return metadataAccessor.SetAnnotations(obj, annots)
 }
 
 // contains check if the specified string array contains a string.

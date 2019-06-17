@@ -26,6 +26,7 @@ import (
 	"github.com/go-logr/logr"
 	farosv1alpha1 "github.com/pusher/faros/pkg/apis/faros/v1alpha1"
 	gittrackutils "github.com/pusher/faros/pkg/controller/gittrack/utils"
+	"github.com/pusher/faros/pkg/controller/gittrackobject"
 	farosflags "github.com/pusher/faros/pkg/flags"
 	utils "github.com/pusher/faros/pkg/utils"
 	farosclient "github.com/pusher/faros/pkg/utils/client"
@@ -444,7 +445,7 @@ func (r *ReconcileGitTrack) deleteResources(leftovers map[string]farosv1alpha1.G
 		r.log.V(0).Info("Found leftover resources to clean up", "leftover resources", string(len(leftovers)))
 	}
 	for name, obj := range leftovers {
-		farosclient.SetDeletionRequestedAnnotation(obj)
+		setDeletionRequestedAnnotation(obj)
 		if err := r.Update(context.TODO(), obj); err != nil {
 			return fmt.Errorf("failed to mark child for deletion for '%s': '%s'", name, err)
 		}
@@ -632,4 +633,22 @@ func (r *ReconcileGitTrack) Reconcile(request reconcile.Request) (reconcile.Resu
 	sOpts.gcReason = gittrackutils.GCSuccess
 
 	return reconcile.Result{}, nil
+}
+
+// setDeletionRequestedAnnotation sets the annotation that a deletion of the
+// resource has been requested.
+func setDeletionRequestedAnnotation(obj runtime.Object) error {
+	var metadataAccessor = meta.NewAccessor()
+
+	annots, err := metadataAccessor.Annotations(obj)
+	if err != nil {
+		return err
+	}
+
+	if annots == nil {
+		annots = map[string]string{}
+	}
+
+	annots[gittrackobject.DeletionRequestedAnnotation] = "true"
+	return metadataAccessor.SetAnnotations(obj, annots)
 }
