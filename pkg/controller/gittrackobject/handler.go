@@ -109,12 +109,13 @@ func (r *ReconcileGitTrackObject) handleGitTrackObject(gto farosv1alpha1.GitTrac
 	// If marked for deletion, remove Finalizer on child and delete GTO.
 	if gto.GetAnnotations()[DeletionRequestedAnnotation] == "true" {
 		finalizers := found.GetFinalizers()
+		var newFinalizers []string
 		for _, finalizer := range finalizers {
 			if finalizer != ResourceFinalizer {
-				finalizers = append(finalizers, finalizer)
+				newFinalizers = append(newFinalizers, finalizer)
 			}
 		}
-		found.SetFinalizers(finalizers)
+		found.SetFinalizers(newFinalizers)
 		r.Delete(context.TODO(), gto)
 	} else {
 		finalizers := child.GetFinalizers()

@@ -288,7 +288,15 @@ var _ = Describe("GitTrackObject Suite", func() {
 
 						m.Update(gto, timeout).Should(Succeed())
 						// Wait for the update reconcile
-						m.Eventually(gto, timeout).Should(Receive(nil))
+						Eventually(requests, timeout).Should(Receive(Equal(expectedRequest)))
+					})
+
+					It("should delete the GTO", func() {
+						Eventually(func() error {
+							return c.Get(context.TODO(), types.NamespacedName{Name: "example", Namespace: "default"}, &farosv1alpha1.GitTrackObject{})
+						}, timeout).ShouldNot(Succeed())
+
+						m.Eventually(child, timeout).ShouldNot(testutils.WithFinalizers(ContainElement("faros.pusher.com/deletion-protection")))
 					})
 				})
 
