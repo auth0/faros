@@ -1,4 +1,4 @@
-apiVersion: faros.pusher.com/v1alpha1
+apiVersion: faros.pusher.com/v1alpha2
 kind: ClusterGitTrack
 metadata:
   labels:
