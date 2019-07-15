@@ -25,6 +25,7 @@ import (
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +genclient:nonNamespaced
 
 // ClusterGitTrack is the Schema for the clustergittracks API
 // +k8s:openapi-gen=true
@@ -74,6 +75,7 @@ func (g *ClusterGitTrack) DeepCopyInterface() v1alpha1.GitTrackInterface {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +genclient:nonNamespaced
 
 // ClusterGitTrackList contains a list of ClusterGitTrack
 type ClusterGitTrackList struct {

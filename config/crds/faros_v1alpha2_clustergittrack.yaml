@@ -75,7 +75,7 @@ spec:
               - key
               type: object
             reference:
-              description: Reference contains the git reference this ClusterGitTrack tracks
+              description: Reference contains the git reference this GitTrack tracks
               type: string
             repository:
               description: Repository is the git repository URI to clone from
@@ -92,7 +92,7 @@ spec:
         status:
           properties:
             conditions:
-              description: Conditions are the conditions on this ClusterGitTrack
+              description: Conditions are the conditions on this GitTrack
               items:
                 properties:
                   lastTransitionTime:

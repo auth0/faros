@@ -542,6 +542,7 @@ func (r *ReconcileGitTrack) ignoreObject(u *unstructured.Unstructured, gitTrackN
 // and what is in the GitTrack.Spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=faros.pusher.com,resources=gittracks,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=faros.pusher.com,resources=clustergittracks,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=faros.pusher.com,resources=gittrackobjects,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=faros.pusher.com,resources=clustergittrackobjects,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileGitTrack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
