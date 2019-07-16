@@ -332,22 +332,12 @@ func (r *ReconcileGitTrack) newGitTrackObjectInterface(name string, u *unstructu
 		return nil, fmt.Errorf("error getting API resource: %v", err)
 	}
 	if namespaced {
-		if gitTrackNamespace == "" || u.GetNamespace() == gitTrackNamespace {
-			instance = &farosv1alpha1.GitTrackObject{
-				TypeMeta: farosv1alpha1.GitTrackObjectTypeMeta,
-			}
-		} else {
-			// Resource is namespaced but in a different namespace than the GitTrack.
-			r.log.V(1).Info("Object is namespaced but not in same namespace as GitTrack", "object namespace", u.GetNamespace(), "gittrack namespace", gitTrackNamespace)
+		instance = &farosv1alpha1.GitTrackObject{
+			TypeMeta: farosv1alpha1.GitTrackObjectTypeMeta,
 		}
 	} else {
-		if gitTrackNamespace == "" {
-			instance = &farosv1alpha1.ClusterGitTrackObject{
-				TypeMeta: farosv1alpha1.ClusterGitTrackObjectTypeMeta,
-			}
-		} else {
-			// Resource is not namespaced but GitTrack is.
-			r.log.V(1).Info("Object is cluster-scoped but GitTrack is not", "object namespace", u.GetNamespace(), "gittrack namespace", gitTrackNamespace)
+		instance = &farosv1alpha1.ClusterGitTrackObject{
+			TypeMeta: farosv1alpha1.ClusterGitTrackObjectTypeMeta,
 		}
 	}
 	instance.SetName(name)
