@@ -506,7 +506,7 @@ func (r *ReconcileGitTrack) ignoreObject(u *unstructured.Unstructured, gitTrackN
 
 	// Ignore namespaced objects not in the namespace managed by the controller
 	if namespaced {
-		if gitTrackNamespace != "" && gitTrackNamespace != u.GetNamespace() {
+		if !farosflags.AllowCrossNamespaceOwnership && gitTrackNamespace != "" && gitTrackNamespace != u.GetNamespace() {
 			r.log.V(1).Info("Object not in namespace", "object namespace", u.GetNamespace(), "gittrack namespace", gitTrackNamespace)
 			return true, fmt.Sprintf("namespace `%s` is not managed by this Faros as GitTrack is in namespace `%s`", u.GetNamespace(), gitTrackNamespace), nil
 		}
@@ -515,7 +515,7 @@ func (r *ReconcileGitTrack) ignoreObject(u *unstructured.Unstructured, gitTrackN
 			return true, fmt.Sprintf("namespace `%s` is not managed by this Faros as --namespace is set to `%s`", u.GetNamespace(), farosflags.Namespace), nil
 		}
 	} else {
-		if gitTrackNamespace != "" {
+		if !farosflags.AllowCrossNamespaceOwnership && gitTrackNamespace != "" {
 			r.log.V(1).Info("Object cluster-scoped", "object namespace", u.GetNamespace(), "gittrack namespace", gitTrackNamespace)
 			return true, fmt.Sprintf("resource is cluster-scoped but this GitTrack is in namespace `%s`", gitTrackNamespace), nil
 		}

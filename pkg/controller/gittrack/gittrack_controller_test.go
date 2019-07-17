@@ -63,92 +63,6 @@ var _ = Describe("GitTrack Suite", func() {
 		return func(e v1.Event) bool { return e.Reason == reason }
 	}
 
-	Context("ClusterGitTrack", func() {
-		var key = types.NamespacedName{Name: "example"}
-		var instance *farosv1alpha2.ClusterGitTrack
-
-		var createInstance = func(gt *farosv1alpha2.ClusterGitTrack, ref string) {
-			gt.Spec.Reference = ref
-			err := c.Create(context.TODO(), gt)
-			Expect(err).NotTo(HaveOccurred())
-		}
-
-		var waitForInstanceCreated = func(key types.NamespacedName) {
-			request := reconcile.Request{NamespacedName: key}
-			// wait for reconcile for creating the GitTrack resource
-			Eventually(requests, timeout).Should(Receive(Equal(request)))
-			// wait for reconcile for updating the GitTrack resource's status
-			Eventually(requests, timeout).Should(Receive(Equal(request)))
-			obj := &farosv1alpha2.ClusterGitTrack{}
-			Eventually(func() error {
-				err := c.Get(context.TODO(), key, obj)
-				if err != nil {
-					return err
-				}
-				if len(obj.Status.Conditions) == 0 {
-					return fmt.Errorf("Status not updated")
-				}
-				return nil
-			}, timeout).Should(Succeed())
-		}
-
-		BeforeEach(func() {
-			// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
-			// channel when it is finished.
-			var err error
-			cfg.RateLimiter = flowcontrol.NewFakeAlwaysRateLimiter()
-			mgr, err = manager.New(cfg, manager.Options{
-				Namespace:          farosflags.Namespace,
-				MetricsBindAddress: "0", // Disable serving metrics while testing
-			})
-			Expect(err).NotTo(HaveOccurred())
-			c = mgr.GetClient()
-
-			var recFn reconcile.Reconciler
-			r = newReconciler(mgr)
-			recFn, requests = SetupTestReconcile(r)
-			Expect(add(mgr, recFn)).NotTo(HaveOccurred())
-			stop = StartTestManager(mgr)
-			instance = &farosv1alpha2.ClusterGitTrack{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "example",
-				},
-				Spec: farosv1alpha1.GitTrackSpec{
-					Repository: repositoryURL,
-				},
-			}
-		})
-
-		AfterEach(func() {
-			close(stop)
-			testutils.DeleteAll(cfg, timeout,
-				&farosv1alpha1.GitTrackList{},
-				&farosv1alpha2.ClusterGitTrackList{},
-				&farosv1alpha1.GitTrackObjectList{},
-				&farosv1alpha1.ClusterGitTrackObjectList{},
-				&v1.EventList{},
-			)
-		})
-
-		Context("When a ClusterGitTrack resource is created", func() {
-			Context("with a child resource that has a name that contains `:`", func() {
-				BeforeEach(func() {
-					createInstance(instance, "241786090da55894dca4e91e3f5023c024d3d9a8")
-					// Wait for client cache to expire
-					waitForInstanceCreated(key)
-				})
-
-				It("replaces `:` with `-`", func() {
-					clusterRoleGto := &farosv1alpha1.ClusterGitTrackObject{}
-					Eventually(func() error {
-						return c.Get(context.TODO(), types.NamespacedName{Name: "clusterrole-test-read-ns-pods-svcs"}, clusterRoleGto)
-					}, timeout).Should(Succeed())
-					Expect(clusterRoleGto.Name).To(Equal("clusterrole-test-read-ns-pods-svcs"))
-				})
-			})
-		})
-	})
-
 	Context("GitTrack", func() {
 		var key = types.NamespacedName{Name: "example", Namespace: "default"}
 		var expectedRequest = reconcile.Request{NamespacedName: key}
@@ -184,6 +98,7 @@ var _ = Describe("GitTrack Suite", func() {
 			// channel when it is finished.
 			var err error
 			cfg.RateLimiter = flowcontrol.NewFakeAlwaysRateLimiter()
+			farosflags.AllowCrossNamespaceOwnership = true
 			mgr, err = manager.New(cfg, manager.Options{
 				Namespace:          farosflags.Namespace,
 				MetricsBindAddress: "0", // Disable serving metrics while testing
@@ -389,9 +304,9 @@ var _ = Describe("GitTrack Suite", func() {
 
 				It("does not create ClusterGitTrackObject", func() {
 					nsCGto := &farosv1alpha1.ClusterGitTrackObject{}
-					Consistently(func() error {
+					Eventually(func() error {
 						return c.Get(context.TODO(), types.NamespacedName{Name: "namespace-test", Namespace: ""}, nsCGto)
-					}, timeout).ShouldNot(Succeed())
+					}, timeout).Should(Succeed())
 				})
 			})
 
@@ -482,14 +397,13 @@ var _ = Describe("GitTrack Suite", func() {
 					Expect(c.LastUpdateTime).To(Equal(c.LastTransitionTime))
 					Expect(c.Reason).To(Equal(string(gittrackutils.ChildrenUpdateSuccess)))
 
-					Expect(instance.Status.ObjectsIgnored).To(Equal(int64(3)))
+					Expect(instance.Status.ObjectsIgnored).To(Equal(int64(2)))
 				})
 
 				It("adds a message to the ignoredFiles status", func() {
 					Eventually(func() error { return c.Get(context.TODO(), key, instance) }, timeout).Should(Succeed())
-					Expect(instance.Status.IgnoredFiles).To(HaveKeyWithValue("foo/deployment-nginx", "namespace `foo` is not managed by this Faros as GitTrack is in namespace `default`"))
-					Expect(instance.Status.IgnoredFiles).To(HaveKeyWithValue("foo/service-nginx", "namespace `foo` is not managed by this Faros as GitTrack is in namespace `default`"))
-					Expect(instance.Status.IgnoredFiles).To(HaveKeyWithValue("namespace-foo", "resource is cluster-scoped but this GitTrack is in namespace `default`"))
+					Expect(instance.Status.IgnoredFiles).To(HaveKeyWithValue("foo/deployment-nginx", "namespace `foo` is not managed by this Faros as --namespace is set to `default`"))
+					Expect(instance.Status.IgnoredFiles).To(HaveKeyWithValue("foo/service-nginx", "namespace `foo` is not managed by this Faros as --namespace is set to `default`"))
 				})
 
 				It("includes the ignored files in ignoredObjects count", func() {
@@ -557,7 +471,23 @@ var _ = Describe("GitTrack Suite", func() {
 					Expect(c.LastUpdateTime).To(Equal(c.LastTransitionTime))
 					Expect(c.Reason).To(Equal(string(gittrackutils.ChildrenUpdateSuccess)))
 
-					Expect(instance.Status.ObjectsIgnored).To(Equal(int64(6)))
+					Expect(instance.Status.ObjectsIgnored).To(Equal(int64(3)))
+				})
+			})
+
+			Context("with a child resource that has a name that contains `:`", func() {
+				BeforeEach(func() {
+					createInstance(instance, "241786090da55894dca4e91e3f5023c024d3d9a8")
+					// Wait for client cache to expire
+					waitForInstanceCreated(key)
+				})
+
+				It("replaces `:` with `-`", func() {
+					clusterRoleGto := &farosv1alpha1.ClusterGitTrackObject{}
+					Eventually(func() error {
+						return c.Get(context.TODO(), types.NamespacedName{Name: "clusterrole-test-read-ns-pods-svcs"}, clusterRoleGto)
+					}, timeout).Should(Succeed())
+					Expect(clusterRoleGto.Name).To(Equal("clusterrole-test-read-ns-pods-svcs"))
 				})
 			})
 
@@ -1163,8 +1093,8 @@ var _ = Describe("GitTrack Suite", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("should return 5 child objects", func() {
-				Expect(children).Should(HaveLen(5))
+			It("should return 6 child objects", func() {
+				Expect(children).Should(HaveLen(6))
 			})
 
 			It("should return 5 namespaced objects", func() {
@@ -1177,14 +1107,349 @@ var _ = Describe("GitTrack Suite", func() {
 				Expect(count).To(Equal(5))
 			})
 
-			It("should return no non-namespaced resource", func() {
+			It("should return 1 non-namespaced resource", func() {
 				var count int
 				for _, obj := range children {
 					if _, ok := obj.(*farosv1alpha1.ClusterGitTrackObject); ok {
 						count++
 					}
 				}
-				Expect(count).To(Equal(0))
+				Expect(count).To(Equal(1))
+			})
+
+			It("should key all items by their NamespacedName", func() {
+				for key, obj := range children {
+					Expect(key).Should(Equal(obj.GetNamespacedName()))
+				}
+			})
+		})
+
+		Context("when cross-namespace ownership disabled", func() {
+
+			BeforeEach(func() {
+				farosflags.AllowCrossNamespaceOwnership = false
+			})
+
+			Context("listObjectsByName", func() {
+				var reconciler *ReconcileGitTrack
+				var children map[string]farosv1alpha1.GitTrackObjectInterface
+
+				BeforeEach(func() {
+					var ok bool
+					reconciler, ok = r.(*ReconcileGitTrack)
+					Expect(ok).To(BeTrue())
+
+					createInstance(instance, "b17c0e0f45beca3f1c1e62a7f49fecb738c60d42")
+					// Wait for client cache to expire
+					waitForInstanceCreated(key)
+
+					var err error
+					children, err = reconciler.listObjectsByName(instance)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("should return 5 child objects", func() {
+					Expect(children).Should(HaveLen(5))
+				})
+
+				It("should return 5 namespaced objects", func() {
+					var count int
+					for _, obj := range children {
+						if _, ok := obj.(*farosv1alpha1.GitTrackObject); ok {
+							count++
+						}
+					}
+					Expect(count).To(Equal(5))
+				})
+
+				It("should return no non-namespaced resource", func() {
+					var count int
+					for _, obj := range children {
+						if _, ok := obj.(*farosv1alpha1.ClusterGitTrackObject); ok {
+							count++
+						}
+					}
+					Expect(count).To(Equal(0))
+				})
+
+				It("should key all items by their NamespacedName", func() {
+					for key, obj := range children {
+						Expect(key).Should(Equal(obj.GetNamespacedName()))
+					}
+				})
+			})
+		})
+	})
+
+	Context("ClusterGitTrack", func() {
+		var key = types.NamespacedName{Name: "example"}
+		var expectedRequest = reconcile.Request{NamespacedName: key}
+		var instance *farosv1alpha2.ClusterGitTrack
+
+		var createInstance = func(gt *farosv1alpha2.ClusterGitTrack, ref string) {
+			gt.Spec.Reference = ref
+			err := c.Create(context.TODO(), gt)
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		var waitForInstanceCreated = func(key types.NamespacedName) {
+			request := reconcile.Request{NamespacedName: key}
+			// wait for reconcile for creating the GitTrack resource
+			Eventually(requests, timeout).Should(Receive(Equal(request)))
+			// wait for reconcile for updating the GitTrack resource's status
+			Eventually(requests, timeout).Should(Receive(Equal(request)))
+			obj := &farosv1alpha2.ClusterGitTrack{}
+			Eventually(func() error {
+				err := c.Get(context.TODO(), key, obj)
+				if err != nil {
+					return err
+				}
+				if len(obj.Status.Conditions) == 0 {
+					return fmt.Errorf("Status not updated")
+				}
+				return nil
+			}, timeout).Should(Succeed())
+		}
+
+		BeforeEach(func() {
+			// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
+			// channel when it is finished.
+			var err error
+			cfg.RateLimiter = flowcontrol.NewFakeAlwaysRateLimiter()
+			mgr, err = manager.New(cfg, manager.Options{
+				Namespace:          farosflags.Namespace,
+				MetricsBindAddress: "0", // Disable serving metrics while testing
+			})
+			Expect(err).NotTo(HaveOccurred())
+			c = mgr.GetClient()
+
+			var recFn reconcile.Reconciler
+			r = newReconciler(mgr)
+			recFn, requests = SetupTestReconcile(r)
+			Expect(add(mgr, recFn)).NotTo(HaveOccurred())
+			stop = StartTestManager(mgr)
+			instance = &farosv1alpha2.ClusterGitTrack{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "example",
+				},
+				Spec: farosv1alpha1.GitTrackSpec{
+					Repository: repositoryURL,
+				},
+			}
+		})
+
+		AfterEach(func() {
+			close(stop)
+			testutils.DeleteAll(cfg, timeout,
+				&farosv1alpha1.GitTrackList{},
+				&farosv1alpha2.ClusterGitTrackList{},
+				&farosv1alpha1.GitTrackObjectList{},
+				&farosv1alpha1.ClusterGitTrackObjectList{},
+				&v1.EventList{},
+			)
+		})
+
+		Context("When a ClusterGitTrack resource is created", func() {
+			Context("with a valid Spec", func() {
+				BeforeEach(func() {
+					createInstance(instance, "a14443638218c782b84cae56a14f1090ee9e5c9c")
+					// Wait for client cache to expire
+					waitForInstanceCreated(key)
+				})
+
+				It("updates its status", func() {
+					Eventually(func() error { return c.Get(context.TODO(), key, instance) }, timeout).Should(Succeed())
+					two, zero := int64(2), int64(0)
+					Expect(instance.Status.ObjectsDiscovered).To(Equal(two))
+					Expect(instance.Status.ObjectsApplied).To(Equal(two))
+					Expect(instance.Status.ObjectsIgnored).To(Equal(zero))
+					Expect(instance.Status.ObjectsInSync).To(Equal(zero))
+
+					deployGto := &farosv1alpha1.GitTrackObject{}
+					Eventually(func() error {
+						return c.Get(context.TODO(), types.NamespacedName{Name: "deployment-nginx", Namespace: "default"}, deployGto)
+					}, timeout).Should(Succeed())
+
+					now := metav1.NewTime(time.Now())
+					deployGto.Status.Conditions = []farosv1alpha1.GitTrackObjectCondition{
+						{
+							Type:               farosv1alpha1.ObjectInSyncType,
+							Status:             v1.ConditionTrue,
+							LastTransitionTime: now,
+							LastUpdateTime:     now,
+						},
+					}
+					Expect(c.Update(context.TODO(), deployGto)).ToNot(HaveOccurred())
+					// Wait for reconcile for update
+					Eventually(requests, timeout).Should(Receive(Equal(expectedRequest)))
+					// Wait for reconcile for status
+					Eventually(requests, timeout).Should(Receive(Equal(expectedRequest)))
+					Eventually(func() error { return c.Get(context.TODO(), key, instance) }, timeout).Should(Succeed())
+					Expect(instance.Status.ObjectsInSync).To(Equal(int64(1)))
+				})
+
+				It("sets the status conditions", func() {
+					Eventually(func() error { return c.Get(context.TODO(), key, instance) }, timeout).Should(Succeed())
+					conditions := instance.Status.Conditions
+					Expect(len(conditions)).To(Equal(4))
+					parseErrorCondition := conditions[0]
+					gitErrorCondition := conditions[1]
+					gcErrorCondition := conditions[2]
+					upToDateCondiiton := conditions[3]
+					Expect(parseErrorCondition.Type).To(Equal(farosv1alpha1.FilesParsedType))
+					Expect(gitErrorCondition.Type).To(Equal(farosv1alpha1.FilesFetchedType))
+					Expect(gcErrorCondition.Type).To(Equal(farosv1alpha1.ChildrenGarbageCollectedType))
+					Expect(upToDateCondiiton.Type).To(Equal(farosv1alpha1.ChildrenUpToDateType))
+				})
+
+				Context("sets the status metrics", func() {
+					var setsMetric = func(status string, value float64) {
+						It(fmt.Sprintf("sets status `%s` to %f", status, value), func() {
+							var gauge prometheus.Gauge
+							Eventually(func() error {
+								var err error
+								gauge, err = metrics.ChildStatus.GetMetricWith(map[string]string{
+									"name":      instance.GetName(),
+									"namespace": instance.GetNamespace(),
+									"status":    status,
+								})
+								return err
+							}, timeout).Should(Succeed())
+							var metric dto.Metric
+							Expect(gauge.Write(&metric)).NotTo(HaveOccurred())
+							Expect(metric.GetGauge().GetValue()).To(Equal(value))
+						})
+					}
+
+					setsMetric("discovered", 2.0)
+					setsMetric("applied", 2.0)
+					setsMetric("ignored", 0.0)
+					setsMetric("inSync", 0.0)
+				})
+
+				It("creates GitTrackObjects", func() {
+					deployGto := &farosv1alpha1.GitTrackObject{}
+					serviceGto := &farosv1alpha1.GitTrackObject{}
+					Eventually(func() error {
+						return c.Get(context.TODO(), types.NamespacedName{Name: "deployment-nginx", Namespace: "default"}, deployGto)
+					}, timeout).Should(Succeed())
+					Eventually(func() error {
+						return c.Get(context.TODO(), types.NamespacedName{Name: "service-nginx", Namespace: "default"}, serviceGto)
+					}, timeout).Should(Succeed())
+				})
+
+				It("sets ownerReferences for created GitTrackObjects", func() {
+					deployGto := &farosv1alpha1.GitTrackObject{}
+					serviceGto := &farosv1alpha1.GitTrackObject{}
+					Eventually(func() error {
+						return c.Get(context.TODO(), types.NamespacedName{Name: "deployment-nginx", Namespace: "default"}, deployGto)
+					}, timeout).Should(Succeed())
+					Eventually(func() error {
+						return c.Get(context.TODO(), types.NamespacedName{Name: "service-nginx", Namespace: "default"}, serviceGto)
+					}, timeout).Should(Succeed())
+					Expect(len(deployGto.OwnerReferences)).To(Equal(1))
+					Expect(len(serviceGto.OwnerReferences)).To(Equal(1))
+				})
+
+				It("sets LastAppliedAnnotations for created GitTrackObjects", func() {
+					deployGto := &farosv1alpha1.GitTrackObject{}
+					serviceGto := &farosv1alpha1.GitTrackObject{}
+					Eventually(func() error {
+						return c.Get(context.TODO(), types.NamespacedName{Name: "deployment-nginx", Namespace: "default"}, deployGto)
+					}, timeout).Should(Succeed())
+					Eventually(func() error {
+						return c.Get(context.TODO(), types.NamespacedName{Name: "service-nginx", Namespace: "default"}, serviceGto)
+					}, timeout).Should(Succeed())
+					Expect(deployGto.GetAnnotations()).To(HaveKey(farosclient.LastAppliedAnnotation))
+					Expect(serviceGto.GetAnnotations()).To(HaveKey(farosclient.LastAppliedAnnotation))
+				})
+
+				It("sends events about checking out configured Git repository", func() {
+					events := &v1.EventList{}
+					Eventually(func() error { return c.List(context.TODO(), events) }, timeout).Should(Succeed())
+					startEvents := testevents.Select(events.Items, reasonFilter("CheckoutStarted"))
+					successEvents := testevents.Select(events.Items, reasonFilter("CheckoutSuccessful"))
+					Expect(startEvents).ToNot(BeEmpty())
+					Expect(successEvents).ToNot(BeEmpty())
+					for _, e := range append(startEvents, successEvents...) {
+						Expect(e.InvolvedObject.Kind).To(Equal("ClusterGitTrack"))
+						Expect(e.InvolvedObject.Name).To(Equal("example"))
+						Expect(e.Type).To(Equal(string(v1.EventTypeNormal)))
+					}
+				})
+
+				It("sends events about creating GitTrackObjects", func() {
+					events := &v1.EventList{}
+					Eventually(func() error { return c.List(context.TODO(), events) }, timeout).Should(Succeed())
+					startEvents := testevents.Select(events.Items, reasonFilter("CreateStarted"))
+					successEvents := testevents.Select(events.Items, reasonFilter("CreateSuccessful"))
+					Expect(startEvents).ToNot(BeEmpty())
+					Expect(successEvents).ToNot(BeEmpty())
+					for _, e := range append(startEvents, successEvents...) {
+						Expect(e.InvolvedObject.Kind).To(Equal("ClusterGitTrack"))
+						Expect(e.InvolvedObject.Name).To(Equal("example"))
+						Expect(e.Type).To(Equal(string(v1.EventTypeNormal)))
+					}
+				})
+			})
+
+			Context("with a child resource that has a name that contains `:`", func() {
+				BeforeEach(func() {
+					createInstance(instance, "241786090da55894dca4e91e3f5023c024d3d9a8")
+					// Wait for client cache to expire
+					waitForInstanceCreated(key)
+				})
+
+				It("replaces `:` with `-`", func() {
+					clusterRoleGto := &farosv1alpha1.ClusterGitTrackObject{}
+					Eventually(func() error {
+						return c.Get(context.TODO(), types.NamespacedName{Name: "clusterrole-test-read-ns-pods-svcs"}, clusterRoleGto)
+					}, timeout).Should(Succeed())
+					Expect(clusterRoleGto.Name).To(Equal("clusterrole-test-read-ns-pods-svcs"))
+				})
+			})
+		})
+
+		Context("listObjectsByName", func() {
+			var reconciler *ReconcileGitTrack
+			var children map[string]farosv1alpha1.GitTrackObjectInterface
+
+			BeforeEach(func() {
+				var ok bool
+				reconciler, ok = r.(*ReconcileGitTrack)
+				Expect(ok).To(BeTrue())
+
+				createInstance(instance, "b17c0e0f45beca3f1c1e62a7f49fecb738c60d42")
+				// Wait for client cache to expire
+				waitForInstanceCreated(key)
+
+				var err error
+				children, err = reconciler.listObjectsByName(instance)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should return 6 child objects", func() {
+				Expect(children).Should(HaveLen(6))
+			})
+
+			It("should return 5 namespaced objects", func() {
+				var count int
+				for _, obj := range children {
+					if _, ok := obj.(*farosv1alpha1.GitTrackObject); ok {
+						count++
+					}
+				}
+				Expect(count).To(Equal(5))
+			})
+
+			It("should return 1 non-namespaced resource", func() {
+				var count int
+				for _, obj := range children {
+					if _, ok := obj.(*farosv1alpha1.ClusterGitTrackObject); ok {
+						count++
+					}
+				}
+				Expect(count).To(Equal(1))
 			})
 
 			It("should key all items by their NamespacedName", func() {
