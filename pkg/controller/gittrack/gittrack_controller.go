@@ -216,7 +216,11 @@ func (r *ReconcileGitTrack) fetchGitCredentials(namespace string, deployKey faro
 // gitstore.File pointers
 func (r *ReconcileGitTrack) getFiles(gt farosv1alpha1.GitTrackInterface) (map[string]*gitstore.File, error) {
 	r.recorder.Eventf(gt, apiv1.EventTypeNormal, "CheckoutStarted", "Checking out '%s' at '%s'", gt.GetSpec().Repository, gt.GetSpec().Reference)
-	gitCreds, err := r.fetchGitCredentials(gt.GetNamespace(), gt.GetSpec().DeployKey)
+	namespace := gt.GetNamespace()
+	if gt.GetSpec().DeployKey.SecretNamespace != "" {
+		namespace = gt.GetSpec().DeployKey.SecretNamespace
+	}
+	gitCreds, err := r.fetchGitCredentials(namespace, gt.GetSpec().DeployKey)
 	if err != nil {
 		r.recorder.Eventf(gt, apiv1.EventTypeWarning, "CheckoutFailed", "Failed to checkout '%s' at '%s'", gt.GetSpec().Repository, gt.GetSpec().Reference)
 		return nil, fmt.Errorf("unable to retrieve git credentials from secret: %v", err)

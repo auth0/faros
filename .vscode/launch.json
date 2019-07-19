@@ -13,7 +13,10 @@
             "env": {
                 "KUBECONFIG": "",
             },
-            "args": ["--sync-period", "30s"]
+            "args": [
+                "--sync-period", "30s",
+                "--v", "2"
+            ]
         }
     ]
 }
