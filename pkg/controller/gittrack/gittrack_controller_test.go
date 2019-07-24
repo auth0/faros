@@ -28,7 +28,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	farosv1alpha1 "github.com/pusher/faros/pkg/apis/faros/v1alpha1"
-	farosv1alpha2 "github.com/pusher/faros/pkg/apis/faros/v1alpha2"
 	"github.com/pusher/faros/pkg/controller/gittrack/metrics"
 	gittrackutils "github.com/pusher/faros/pkg/controller/gittrack/utils"
 	farosflags "github.com/pusher/faros/pkg/flags"
@@ -126,7 +125,7 @@ var _ = Describe("GitTrack Suite", func() {
 			close(stop)
 			testutils.DeleteAll(cfg, timeout,
 				&farosv1alpha1.GitTrackList{},
-				&farosv1alpha2.ClusterGitTrackList{},
+				&farosv1alpha1.ClusterGitTrackList{},
 				&farosv1alpha1.GitTrackObjectList{},
 				&farosv1alpha1.ClusterGitTrackObjectList{},
 				&v1.EventList{},
@@ -1184,9 +1183,9 @@ var _ = Describe("GitTrack Suite", func() {
 	Context("ClusterGitTrack", func() {
 		var key = types.NamespacedName{Name: "example"}
 		var expectedRequest = reconcile.Request{NamespacedName: key}
-		var instance *farosv1alpha2.ClusterGitTrack
+		var instance *farosv1alpha1.ClusterGitTrack
 
-		var createInstance = func(gt *farosv1alpha2.ClusterGitTrack, ref string) {
+		var createInstance = func(gt *farosv1alpha1.ClusterGitTrack, ref string) {
 			gt.Spec.Reference = ref
 			err := c.Create(context.TODO(), gt)
 			Expect(err).NotTo(HaveOccurred())
@@ -1198,7 +1197,7 @@ var _ = Describe("GitTrack Suite", func() {
 			Eventually(requests, timeout).Should(Receive(Equal(request)))
 			// wait for reconcile for updating the GitTrack resource's status
 			Eventually(requests, timeout).Should(Receive(Equal(request)))
-			obj := &farosv1alpha2.ClusterGitTrack{}
+			obj := &farosv1alpha1.ClusterGitTrack{}
 			Eventually(func() error {
 				err := c.Get(context.TODO(), key, obj)
 				if err != nil {
@@ -1228,7 +1227,7 @@ var _ = Describe("GitTrack Suite", func() {
 			recFn, requests = SetupTestReconcile(r)
 			Expect(add(mgr, recFn)).NotTo(HaveOccurred())
 			stop = StartTestManager(mgr)
-			instance = &farosv1alpha2.ClusterGitTrack{
+			instance = &farosv1alpha1.ClusterGitTrack{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "example",
 				},
@@ -1242,7 +1241,7 @@ var _ = Describe("GitTrack Suite", func() {
 			close(stop)
 			testutils.DeleteAll(cfg, timeout,
 				&farosv1alpha1.GitTrackList{},
-				&farosv1alpha2.ClusterGitTrackList{},
+				&farosv1alpha1.ClusterGitTrackList{},
 				&farosv1alpha1.GitTrackObjectList{},
 				&farosv1alpha1.ClusterGitTrackObjectList{},
 				&v1.EventList{},

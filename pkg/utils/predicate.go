@@ -20,7 +20,6 @@ import (
 	"context"
 
 	farosv1alpha1 "github.com/pusher/faros/pkg/apis/faros/v1alpha1"
-	farosv1alpha2 "github.com/pusher/faros/pkg/apis/faros/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -28,7 +27,6 @@ import (
 
 const (
 	farosGroupVersionAlpha1 = "faros.pusher.com/v1alpha1"
-	farosGroupVersionAlpha2 = "faros.pusher.com/v1alpha2"
 )
 
 // OwnerInNamespacePredicate filters events to check the owner of the event
@@ -65,7 +63,7 @@ func (p OwnerInNamespacePredicate) Generic(e event.GenericEvent) bool {
 // When it is restricted to a namespace this should only be the GitTracks
 // in the namespace the controller is managing.
 func (p OwnerInNamespacePredicate) ownerInNamespace(ownerRefs []metav1.OwnerReference) bool {
-	cgtList := &farosv1alpha2.ClusterGitTrackList{}
+	cgtList := &farosv1alpha1.ClusterGitTrackList{}
 	err := p.client.List(context.TODO(), cgtList)
 	if err != nil {
 		// We can't list CGTOs so fail closed and ignore the requests
@@ -86,7 +84,7 @@ func (p OwnerInNamespacePredicate) ownerInNamespace(ownerRefs []metav1.OwnerRefe
 				}
 			}
 		}
-		if ref.Kind == "ClusterGitTrack" && ref.APIVersion == farosGroupVersionAlpha2 {
+		if ref.Kind == "ClusterGitTrack" && ref.APIVersion == farosGroupVersionAlpha1 {
 			for _, cgt := range cgtList.Items {
 				if ref.UID == cgt.UID {
 					return true

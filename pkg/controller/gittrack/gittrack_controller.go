@@ -25,7 +25,6 @@ import (
 
 	"github.com/go-logr/logr"
 	farosv1alpha1 "github.com/pusher/faros/pkg/apis/faros/v1alpha1"
-	farosv1alpha2 "github.com/pusher/faros/pkg/apis/faros/v1alpha2"
 	gittrackutils "github.com/pusher/faros/pkg/controller/gittrack/utils"
 	farosflags "github.com/pusher/faros/pkg/flags"
 	utils "github.com/pusher/faros/pkg/utils"
@@ -104,7 +103,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	err = c.Watch(&source.Kind{Type: &farosv1alpha2.ClusterGitTrack{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &farosv1alpha1.ClusterGitTrack{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -127,7 +126,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(&source.Kind{Type: &farosv1alpha1.GitTrackObject{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &farosv1alpha2.ClusterGitTrack{},
+		OwnerType:    &farosv1alpha1.ClusterGitTrack{},
 	})
 	if err != nil {
 		return err
@@ -135,7 +134,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(&source.Kind{Type: &farosv1alpha1.ClusterGitTrackObject{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &farosv1alpha2.ClusterGitTrack{},
+		OwnerType:    &farosv1alpha1.ClusterGitTrack{},
 	})
 	if err != nil {
 		return err
@@ -274,7 +273,7 @@ func (r *ReconcileGitTrack) fetchInstance(req reconcile.Request) (farosv1alpha1.
 	if req.Namespace != "" {
 		instance = &farosv1alpha1.GitTrack{}
 	} else {
-		instance = &farosv1alpha2.ClusterGitTrack{}
+		instance = &farosv1alpha1.ClusterGitTrack{}
 	}
 
 	err := r.Get(context.TODO(), req.NamespacedName, instance)
