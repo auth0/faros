@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	v1alpha2 "github.com/pusher/faros/pkg/apis/faros/v1alpha2"
+	v1alpha1 "github.com/pusher/faros/pkg/apis/faros/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -30,27 +30,27 @@ import (
 
 // FakeClusterGitTracks implements ClusterGitTrackInterface
 type FakeClusterGitTracks struct {
-	Fake *FakeFarosV1alpha2
+	Fake *FakeFarosV1alpha1
 }
 
-var clustergittracksResource = schema.GroupVersionResource{Group: "faros.pusher.com", Version: "v1alpha2", Resource: "clustergittracks"}
+var clustergittracksResource = schema.GroupVersionResource{Group: "faros.pusher.com", Version: "v1alpha1", Resource: "clustergittracks"}
 
-var clustergittracksKind = schema.GroupVersionKind{Group: "faros.pusher.com", Version: "v1alpha2", Kind: "ClusterGitTrack"}
+var clustergittracksKind = schema.GroupVersionKind{Group: "faros.pusher.com", Version: "v1alpha1", Kind: "ClusterGitTrack"}
 
 // Get takes name of the clusterGitTrack, and returns the corresponding clusterGitTrack object, and an error if there is any.
-func (c *FakeClusterGitTracks) Get(name string, options v1.GetOptions) (result *v1alpha2.ClusterGitTrack, err error) {
+func (c *FakeClusterGitTracks) Get(name string, options v1.GetOptions) (result *v1alpha1.ClusterGitTrack, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(clustergittracksResource, name), &v1alpha2.ClusterGitTrack{})
+		Invokes(testing.NewRootGetAction(clustergittracksResource, name), &v1alpha1.ClusterGitTrack{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha2.ClusterGitTrack), err
+	return obj.(*v1alpha1.ClusterGitTrack), err
 }
 
 // List takes label and field selectors, and returns the list of ClusterGitTracks that match those selectors.
-func (c *FakeClusterGitTracks) List(opts v1.ListOptions) (result *v1alpha2.ClusterGitTrackList, err error) {
+func (c *FakeClusterGitTracks) List(opts v1.ListOptions) (result *v1alpha1.ClusterGitTrackList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(clustergittracksResource, clustergittracksKind, opts), &v1alpha2.ClusterGitTrackList{})
+		Invokes(testing.NewRootListAction(clustergittracksResource, clustergittracksKind, opts), &v1alpha1.ClusterGitTrackList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -59,8 +59,8 @@ func (c *FakeClusterGitTracks) List(opts v1.ListOptions) (result *v1alpha2.Clust
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1alpha2.ClusterGitTrackList{ListMeta: obj.(*v1alpha2.ClusterGitTrackList).ListMeta}
-	for _, item := range obj.(*v1alpha2.ClusterGitTrackList).Items {
+	list := &v1alpha1.ClusterGitTrackList{ListMeta: obj.(*v1alpha1.ClusterGitTrackList).ListMeta}
+	for _, item := range obj.(*v1alpha1.ClusterGitTrackList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -75,40 +75,40 @@ func (c *FakeClusterGitTracks) Watch(opts v1.ListOptions) (watch.Interface, erro
 }
 
 // Create takes the representation of a clusterGitTrack and creates it.  Returns the server's representation of the clusterGitTrack, and an error, if there is any.
-func (c *FakeClusterGitTracks) Create(clusterGitTrack *v1alpha2.ClusterGitTrack) (result *v1alpha2.ClusterGitTrack, err error) {
+func (c *FakeClusterGitTracks) Create(clusterGitTrack *v1alpha1.ClusterGitTrack) (result *v1alpha1.ClusterGitTrack, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(clustergittracksResource, clusterGitTrack), &v1alpha2.ClusterGitTrack{})
+		Invokes(testing.NewRootCreateAction(clustergittracksResource, clusterGitTrack), &v1alpha1.ClusterGitTrack{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha2.ClusterGitTrack), err
+	return obj.(*v1alpha1.ClusterGitTrack), err
 }
 
 // Update takes the representation of a clusterGitTrack and updates it. Returns the server's representation of the clusterGitTrack, and an error, if there is any.
-func (c *FakeClusterGitTracks) Update(clusterGitTrack *v1alpha2.ClusterGitTrack) (result *v1alpha2.ClusterGitTrack, err error) {
+func (c *FakeClusterGitTracks) Update(clusterGitTrack *v1alpha1.ClusterGitTrack) (result *v1alpha1.ClusterGitTrack, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(clustergittracksResource, clusterGitTrack), &v1alpha2.ClusterGitTrack{})
+		Invokes(testing.NewRootUpdateAction(clustergittracksResource, clusterGitTrack), &v1alpha1.ClusterGitTrack{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha2.ClusterGitTrack), err
+	return obj.(*v1alpha1.ClusterGitTrack), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeClusterGitTracks) UpdateStatus(clusterGitTrack *v1alpha2.ClusterGitTrack) (*v1alpha2.ClusterGitTrack, error) {
+func (c *FakeClusterGitTracks) UpdateStatus(clusterGitTrack *v1alpha1.ClusterGitTrack) (*v1alpha1.ClusterGitTrack, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(clustergittracksResource, "status", clusterGitTrack), &v1alpha2.ClusterGitTrack{})
+		Invokes(testing.NewRootUpdateSubresourceAction(clustergittracksResource, "status", clusterGitTrack), &v1alpha1.ClusterGitTrack{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha2.ClusterGitTrack), err
+	return obj.(*v1alpha1.ClusterGitTrack), err
 }
 
 // Delete takes name of the clusterGitTrack and deletes it. Returns an error if one occurs.
 func (c *FakeClusterGitTracks) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(clustergittracksResource, name), &v1alpha2.ClusterGitTrack{})
+		Invokes(testing.NewRootDeleteAction(clustergittracksResource, name), &v1alpha1.ClusterGitTrack{})
 	return err
 }
 
@@ -116,16 +116,16 @@ func (c *FakeClusterGitTracks) Delete(name string, options *v1.DeleteOptions) er
 func (c *FakeClusterGitTracks) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 	action := testing.NewRootDeleteCollectionAction(clustergittracksResource, listOptions)
 
-	_, err := c.Fake.Invokes(action, &v1alpha2.ClusterGitTrackList{})
+	_, err := c.Fake.Invokes(action, &v1alpha1.ClusterGitTrackList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched clusterGitTrack.
-func (c *FakeClusterGitTracks) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha2.ClusterGitTrack, err error) {
+func (c *FakeClusterGitTracks) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ClusterGitTrack, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(clustergittracksResource, name, pt, data, subresources...), &v1alpha2.ClusterGitTrack{})
+		Invokes(testing.NewRootPatchSubresourceAction(clustergittracksResource, name, pt, data, subresources...), &v1alpha1.ClusterGitTrack{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha2.ClusterGitTrack), err
+	return obj.(*v1alpha1.ClusterGitTrack), err
 }

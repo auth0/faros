@@ -14,12 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha2
+package v1alpha1
 
 import (
 	"testing"
-
-	v1alpha1 "github.com/pusher/faros/pkg/apis/faros/v1alpha1"
 
 	"github.com/onsi/gomega"
 	"golang.org/x/net/context"
@@ -49,7 +47,7 @@ func TestStorageClusterGitTrack(t *testing.T) {
 
 	// Test Setting deployKey
 	keyless := fetched.DeepCopy()
-	keyless.Spec.DeployKey = v1alpha1.GitTrackDeployKey{
+	keyless.Spec.DeployKey = GitTrackDeployKey{
 		SecretName: "secretfoo",
 		Key:        "secretbar",
 	}

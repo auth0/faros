@@ -14,12 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha2
+package v1alpha1
 
 import (
-	"fmt"
-
-	v1alpha1 "github.com/pusher/faros/pkg/apis/faros/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -40,37 +37,37 @@ type ClusterGitTrack struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   v1alpha1.GitTrackSpec   `json:"spec,omitempty"`
-	Status v1alpha1.GitTrackStatus `json:"status,omitempty"`
+	Spec   GitTrackSpec   `json:"spec,omitempty"`
+	Status GitTrackStatus `json:"status,omitempty"`
 }
 
 // GetNamespacedName implementes the GitTrack interface
 func (g *ClusterGitTrack) GetNamespacedName() string {
-	return fmt.Sprintf("%s/%s", g.Namespace, g.Name)
+	return g.Name
 }
 
 // GetSpec implements the GitTrack interface
-func (g *ClusterGitTrack) GetSpec() v1alpha1.GitTrackSpec {
+func (g *ClusterGitTrack) GetSpec() GitTrackSpec {
 	return g.Spec
 }
 
 // SetSpec implements the GitTrack interface
-func (g *ClusterGitTrack) SetSpec(s v1alpha1.GitTrackSpec) {
+func (g *ClusterGitTrack) SetSpec(s GitTrackSpec) {
 	g.Spec = s
 }
 
 // GetStatus implements the GitTrack interface
-func (g *ClusterGitTrack) GetStatus() v1alpha1.GitTrackStatus {
+func (g *ClusterGitTrack) GetStatus() GitTrackStatus {
 	return g.Status
 }
 
 // SetStatus implements the GitTrack interface
-func (g *ClusterGitTrack) SetStatus(s v1alpha1.GitTrackStatus) {
+func (g *ClusterGitTrack) SetStatus(s GitTrackStatus) {
 	g.Status = s
 }
 
 // DeepCopyInterface implements the GitTrack interface
-func (g *ClusterGitTrack) DeepCopyInterface() v1alpha1.GitTrackInterface {
+func (g *ClusterGitTrack) DeepCopyInterface() GitTrackInterface {
 	return g.DeepCopy()
 }
 
