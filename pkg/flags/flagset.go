@@ -19,6 +19,7 @@ package flags
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	flag "github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -39,6 +40,9 @@ var (
 
 	// AllowCrossNamespaceOwnership defines whether cross-namespace ownership is allowed.
 	AllowCrossNamespaceOwnership bool
+
+	// FetchTimeout in seconds for fetching changes from repositories
+	FetchTimeout time.Duration
 )
 
 func init() {
@@ -47,6 +51,7 @@ func init() {
 	FlagSet.StringSliceVar(&ignoredResources, "ignore-resource", []string{}, "Ignore resources of these kinds found in repositories, specified in <resource>.<group>/<version> format eg jobs.batch/v1")
 	FlagSet.BoolVar(&ServerDryRun, "server-dry-run", true, "Enable/Disable server side dry run before updating resources")
 	FlagSet.BoolVar(&AllowCrossNamespaceOwnership, "allow-cross-namespace-ownership", false, "Whether cross-namespace ownership should be allowed. Enable with caution! See #143")
+	FlagSet.DurationVar(&FetchTimeout, "fetch-timeout", 30*time.Second, "Timeout in seconds for fetching changes from repositories")
 }
 
 // ParseIgnoredResources attempts to parse the ignore-resource flag value and
