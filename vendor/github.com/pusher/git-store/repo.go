@@ -14,6 +14,7 @@ limitations under the License.
 package gitstore
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -35,8 +36,8 @@ type Repo struct {
 
 // File represents a file within a git repository.
 type File struct {
-	Log  GitLog // Log contians the git log information for this file at the current reference.
-	file *object.File
+	file       *object.File
+	headCommit *object.Commit
 }
 
 // GitLog contains information about a commit from the git repository log.
@@ -67,7 +68,14 @@ func (r *Repo) setAuth(auth transport.AuthMethod) {
 //
 // Note: It is assumed that the repository has already been cloned prior to Checkout() being called.
 func (r *Repo) Checkout(ref string) error {
-	err := r.Fetch()
+	return r.CheckoutContext(context.Background(), ref)
+}
+
+// CheckoutContext performs a Git checkout of the repository at the provided reference.
+//
+// Note: It is assumed that the repository has already been cloned prior to Checkout() being called.
+func (r *Repo) CheckoutContext(ctx context.Context, ref string) error {
+	err := r.FetchContext(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to fetch repository: %v", err)
 	}
@@ -90,7 +98,7 @@ func (r *Repo) Checkout(ref string) error {
 
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	//Perform checkout operation on worktree
+	// Perform checkout operation on worktree
 	err = workTree.Checkout(&git.CheckoutOptions{
 		Hash:  *hash,
 		Force: true,
@@ -125,8 +133,22 @@ func (r *Repo) parseReference(ref string) (*plumbing.Hash, error) {
 // Note: While Fetch itself is thread-safe in that it ensures a previous Fetch() is completed before starting a new one,
 // the Repo is not. If Fetch is called from two go routines, subsequent reads may be non-deterministic.
 func (r *Repo) Fetch() error {
+	return r.FetchContext(context.Background())
+}
+
+// FetchContext performs a Git fetch of the repository.
+//
+// Note: While Fetch itself is thread-safe in that it ensures a previous Fetch() is completed before starting a new one,
+// the Repo is not. If Fetch is called from two go routines, subsequent reads may be non-deterministic.
+func (r *Repo) FetchContext(ctx context.Context) error {
+	r.mutex.Lock()
 	// Perform a fetch on the repository
-	err := r.fetch()
+	err := r.repository.FetchContext(ctx, &git.FetchOptions{
+		Auth:  r.auth,
+		Force: true,
+		Tags:  git.AllTags,
+	})
+	r.mutex.Unlock()
 	// Ignore "already-up-to-date" error
 	if err != nil && err != git.NoErrAlreadyUpToDate {
 		return fmt.Errorf("unable to fetch repository: %v", err)
@@ -134,37 +156,8 @@ func (r *Repo) Fetch() error {
 	return nil
 }
 
-// fetch performs a fetch on the internal repository while under a lock
-func (r *Repo) fetch() error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	return r.repository.Fetch(&git.FetchOptions{
-		Auth:  r.auth,
-		Force: true,
-		Tags:  git.AllTags,
-	})
-}
-
 // GetFile returns a pointer to a File from the repository that can be used to read its contents.
 func (r *Repo) GetFile(path string) (*File, error) {
-	// Open file from repository
-	file, err := r.getFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("unable to load file %s: %v", path, err)
-	}
-
-	fileLog, err := r.getFileLog(path)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get log: %v", err)
-	}
-
-	return &File{
-		file: file,
-		Log:  fileLog,
-	}, nil
-}
-
-func (r *Repo) getFile(path string) (*object.File, error) {
 	commit, err := r.getHeadCommit()
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch HEAD commit: %v", err)
@@ -174,48 +167,17 @@ func (r *Repo) getFile(path string) (*object.File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to load file: %v", err)
 	}
-	return file, nil
-}
 
-func (r *Repo) getBlame(path string) (*git.BlameResult, error) {
-	commit, err := r.getHeadCommit()
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch HEAD commit: %v", err)
-	}
-
-	blame, err := git.Blame(commit, path)
-	if err != nil {
-		fmt.Printf("WARN: failed to fetch git blame: %v", err)
-		return &git.BlameResult{Lines: []*git.Line{}}, nil
-	}
-	return blame, nil
-}
-
-func (r *Repo) getFileLog(path string) (GitLog, error) {
-	blame, err := r.getBlame(path)
-	if err != nil {
-		return GitLog{}, fmt.Errorf("unable to get blame for %s: %v", path, err)
-	}
-
-	var fileLog GitLog
-	for _, line := range blame.Lines {
-		if line.Date.After(fileLog.Date) {
-			fileLog = GitLog{
-				Date:   line.Date,
-				Hash:   line.Hash,
-				Author: line.Author,
-				Text:   line.Text,
-			}
-		}
-	}
-
-	return fileLog, nil
+	return &File{
+		file:       file,
+		headCommit: commit,
+	}, nil
 }
 
 // GetAllFiles returns a map of Files.
 // Each file is keyed in the map by it's path within the repository
 func (r *Repo) GetAllFiles(subPath string, ignoreSymlinks bool) (map[string]*File, error) {
-	rawFiles, err := r.getAllFiles()
+	allFiles, err := r.getAllFiles()
 	if err != nil {
 		return nil, fmt.Errorf("unable to read files from repository: %v", err)
 	}
@@ -229,30 +191,23 @@ func (r *Repo) GetAllFiles(subPath string, ignoreSymlinks bool) (map[string]*Fil
 	}
 
 	files := make(map[string]*File)
-	for path, file := range rawFiles {
+	for path, file := range allFiles {
 		// If subPath is set, skip the file if it doesn't match
 		if g != nil && !g.Match(path) {
 			continue
 		}
 
 		// If the file is a symlink, skip it
-		if ignoreSymlinks && file.Mode == filemode.Symlink {
+		if ignoreSymlinks && file.file.Mode == filemode.Symlink {
 			continue
 		}
 
-		fileLog, err := r.getFileLog(path)
-		if err != nil {
-			return nil, fmt.Errorf("unable to get log for %s: %v", path, err)
-		}
-		files[path] = &File{
-			file: file,
-			Log:  fileLog,
-		}
+		files[path] = file
 	}
 	return files, nil
 }
 
-func (r *Repo) getAllFiles() (map[string]*object.File, error) {
+func (r *Repo) getAllFiles() (map[string]*File, error) {
 	commit, err := r.getHeadCommit()
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch HEAD commit: %v", err)
@@ -263,9 +218,12 @@ func (r *Repo) getAllFiles() (map[string]*object.File, error) {
 		return nil, fmt.Errorf("unable to load files: %v", err)
 	}
 
-	files := make(map[string]*object.File)
+	files := make(map[string]*File)
 	fileiter.ForEach(func(file *object.File) error {
-		files[file.Name] = file
+		files[file.Name] = &File{
+			file:       file,
+			headCommit: commit,
+		}
 		return nil
 	})
 
@@ -297,6 +255,33 @@ func (r *Repo) getHeadCommit() (*object.Commit, error) {
 	return commit, nil
 }
 
+// IsDirectory checks if the reference at a path if a directory
+func (r *Repo) IsDirectory(path string) (bool, error) {
+	return r.isFileMode(path, filemode.Dir)
+}
+
+// IsFile checks if the reference at a path if a regular file
+func (r *Repo) IsFile(path string) (bool, error) {
+	return r.isFileMode(path, filemode.Regular)
+}
+
+func (r *Repo) isFileMode(path string, mode filemode.FileMode) (bool, error) {
+	commit, err := r.getHeadCommit()
+	if err != nil {
+		return false, fmt.Errorf("error fetching head commit: %v", err)
+	}
+	tree, err := commit.Tree()
+	if err != nil {
+		return false, fmt.Errorf("error fetching commit tree: %v", err)
+	}
+
+	entry, err := tree.FindEntry(path)
+	if err != nil {
+		return false, fmt.Errorf("error looking up path: %v", err)
+	}
+	return entry.Mode == mode, nil
+}
+
 // Contents returns the content of the File as a string.
 //
 // Note: Contents() does not verify file type and will return binary files as a (probably useless) string representation.
@@ -310,4 +295,35 @@ func (f *File) Contents() string {
 		return ""
 	}
 	return content
+}
+
+func (f *File) getBlame() (*git.BlameResult, error) {
+	blame, err := git.Blame(f.headCommit, f.file.Name)
+	if err != nil {
+		fmt.Printf("WARN: failed to fetch git blame: %v", err)
+		return &git.BlameResult{Lines: []*git.Line{}}, nil
+	}
+	return blame, nil
+}
+
+// FileLog returns the file log for the current file.
+func (f *File) FileLog() (GitLog, error) {
+	blame, err := f.getBlame()
+	if err != nil {
+		return GitLog{}, fmt.Errorf("unable to get blame for %s: %v", f.file.Name, err)
+	}
+
+	var fileLog GitLog
+	for _, line := range blame.Lines {
+		if line.Date.After(fileLog.Date) {
+			fileLog = GitLog{
+				Date:   line.Date,
+				Hash:   line.Hash,
+				Author: line.Author,
+				Text:   line.Text,
+			}
+		}
+	}
+
+	return fileLog, nil
 }
